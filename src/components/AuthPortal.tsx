@@ -24,7 +24,7 @@ interface AuthPortalProps {
 
 export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
   const [mode, setMode] = useState<"LOGIN" | "REGISTER">("LOGIN");
-  const [identifier, setIdentifier] = useState("WS-001");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
 
@@ -108,16 +108,9 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
     }
   }
 
-  function selectAccountId(id: string) {
-    setMode("LOGIN");
-    setIdentifier(id);
-    setErrorMsg(null);
-    setSuccessMsg(null);
-  }
-
   return (
     <div className="min-h-screen bg-[#F5F7FB] flex flex-col justify-center items-center px-4 py-8">
-      <div className="w-full max-w-[420px] bg-white rounded-[28px] shadow-[0_10px_40px_rgba(15,23,42,0.06)] border border-slate-100 overflow-hidden">
+      <div className="w-full max-w-[400px] bg-white rounded-[28px] shadow-[0_10px_40px_rgba(15,23,42,0.06)] border border-slate-100 overflow-hidden">
         {/* Clean Minimal Gojek-Style Top Header */}
         <div className="px-6 pt-7 pb-5 text-center border-b border-slate-100">
           <div className="w-12 h-12 rounded-2xl bg-[#1428A0] flex items-center justify-center mx-auto shadow-md shadow-blue-900/15 mb-3">
@@ -187,7 +180,7 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  ID Karyawan / Email
+                  Username / ID Karyawan / Email
                 </label>
                 <div className="relative">
                   <BadgeCheck className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -196,7 +189,7 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
                     required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="WS-001 / EMP-101 / email"
+                    placeholder="Masukkan username atau email"
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0066FF] focus:bg-white transition"
                   />
                 </div>
@@ -238,44 +231,13 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
                 <span>{loading ? "Memproses..." : "Masuk"}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-
-              {/* Compact Quick ID Chips */}
-              <div className="pt-4 border-t border-slate-100">
-                <div className="text-[11px] font-semibold text-slate-400 mb-2 text-center">
-                  Pilih ID Cepat
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {[
-                    { id: "WS-001", label: "Admin WS" },
-                    { id: "EMP-101", label: "Karyawan" },
-                    { id: "DRV-201", label: "Driver" },
-                    { id: "EMP-103", label: "Pending" },
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => selectAccountId(item.id)}
-                      className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center justify-between transition ${
-                        identifier === item.id
-                          ? "border-[#0066FF] bg-[#EEF4FF] text-[#1428A0]"
-                          : "border-slate-200 bg-slate-50/70 text-slate-600 hover:bg-slate-100"
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      <span className="text-[10px] font-extrabold opacity-75">
-                        {item.id}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </form>
           ) : (
             <form onSubmit={handleRegister} className="space-y-3">
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    ID Karyawan (NIK)
+                    Username / NIK
                   </label>
                   <input
                     type="text"

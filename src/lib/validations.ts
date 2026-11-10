@@ -37,8 +37,8 @@ export const registerSchema = z.object({
     .min(3, "Nomor Induk Karyawan (NIK) minimal 3 karakter")
     .max(30, "Maksimal 30 karakter")
     .regex(
-      /^[A-Za-z0-9-_]+$/,
-      "ID Karyawan hanya boleh huruf, angka, dan tanda hubung (Alphanumeric & hyphens only)"
+      /^[A-Za-z0-9._-]+$/,
+      "Username / ID hanya boleh huruf, angka, titik, garis bawah, atau tanda hubung"
     )
     .transform((s): string => sanitizeText(s)),
   email: z

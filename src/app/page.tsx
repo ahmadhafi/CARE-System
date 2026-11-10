@@ -8,11 +8,13 @@ import {
   Compass,
   Navigation,
   RefreshCw,
+  Settings,
 } from "lucide-react";
 import AuthPortal from "@/components/AuthPortal";
 import EmployeeGojekApp from "@/components/EmployeeGojekApp";
 import DriverTripApp from "@/components/DriverTripApp";
 import WorkplaceAdminDashboard from "@/components/WorkplaceAdminDashboard";
+import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import {
   Booking,
   CarType,
@@ -27,6 +29,7 @@ import {
 export default function HomePage() {
   const [user, setUser] = useState<SafeUser | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const [viewMode, setViewMode] = useState<
     "ADMIN_DASHBOARD" | "EMPLOYEE_GOJEK" | "DRIVER_APP"
@@ -242,17 +245,20 @@ export default function HomePage() {
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
 
-            <div className="hidden sm:flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full">
-              <div className="w-5 h-5 rounded-full bg-[#1428A0] text-white text-[10px] font-bold flex items-center justify-center">
-                {user.name.charAt(0)}
+            <button
+              type="button"
+              onClick={() => setShowProfileModal(true)}
+              title="Pengaturan Profil"
+              className="flex items-center gap-1.5 bg-slate-100 hover:bg-[#EEF4FF] px-2.5 py-1 rounded-full transition"
+            >
+              <div className="w-5 h-5 rounded-full bg-[#1428A0] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                {user.name.charAt(0).toUpperCase()}
               </div>
-              <span className="text-xs font-bold text-slate-800 max-w-[110px] truncate">
+              <span className="hidden sm:inline text-xs font-bold text-slate-800 max-w-[95px] truncate">
                 {user.name.split(" ")[0]}
               </span>
-              <span className="text-[10px] font-semibold text-slate-500">
-                {user.employeeNo}
-              </span>
-            </div>
+              <Settings className="w-3.5 h-3.5 text-[#1428A0]" />
+            </button>
 
             <button
               type="button"
@@ -313,6 +319,17 @@ export default function HomePage() {
           />
         )}
       </main>
+
+      {showProfileModal && (
+        <ProfileSettingsModal
+          user={user}
+          onClose={() => setShowProfileModal(false)}
+          onUpdated={async (updatedUser) => {
+            setUser(updatedUser);
+            await loadWorkspaceData(updatedUser);
+          }}
+        />
+      )}
     </div>
   );
 }
