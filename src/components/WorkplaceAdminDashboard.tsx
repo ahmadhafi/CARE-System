@@ -1738,34 +1738,6 @@ export default function WorkplaceAdminDashboard({
           </div>
         </div>
       )}
-
-      {/* Native Android & iOS Mobile Bottom Tab Bar for Admin */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 pb-safe">
-        <div className="grid grid-cols-5 h-15 px-1">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center justify-center gap-0.5 relative ${
-                  active ? "text-[#1428A0]" : "text-slate-400"
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="text-[10px] font-bold">{tab.label}</span>
-                {tab.badge > 0 && (
-                  <span className="absolute top-1.5 right-3 bg-[#0066FF] text-white text-[9px] font-extrabold min-w-[14px] h-[14px] px-1 rounded-full flex items-center justify-center">
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </nav>
     </div>
   );
 }
