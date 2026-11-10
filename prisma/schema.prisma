@@ -1,0 +1,201 @@
+// ============================================================================
+// CARE System - Corporate Operational Car Booking System (Workplace Solution)
+// Prisma Schema for PostgreSQL (Vercel Postgres / Neon / Supabase)
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  employeeNo   String   @unique
+  email        String   @unique
+  passwordHash String
+  name         String
+  department   String
+  phone        String
+  role         String   @default("EMPLOYEE") // EMPLOYEE, DRIVER, WORKPLACE_ADMIN, SUPER_ADMIN
+  status       String   @default("PENDING_APPROVAL") // PENDING_APPROVAL, ACTIVE, DEACTIVATED, REJECTED
+  approvedBy   String?
+  approvedAt   DateTime?
+  rejectedReason String?
+  gpsConsent   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  driverProfile Driver?
+  bookings      Booking[] @relation("RequesterBookings")
+  decisions     Booking[] @relation("DeciderBookings")
+  notifications Notification[]
+  auditLogs     AuditLog[]
+}
+
+model CarType {
+  id          String    @id @default(cuid())
+  name        String    @unique // e.g., "GoCar EV SUV (Ioniq 5)", "GoCar MPV (Stargazer)", "Executive Sedan"
+  code        String    @unique // e.g., "EV_SUV", "MPV_PETROL"
+  powertrain  String    // "EV" | "PETROL" | "HYBRID"
+  seats       Int
+  defaultRangeKm Int
+  description String
+  badgeText   String    // e.g., "Zero Emission", "7-Seater Family/Team"
+  iconType    String    // "EV" | "MPV" | "SEDAN" | "VAN"
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  vehicles    Vehicle[]
+}
+
+model Vehicle {
+  id            String   @id @default(cuid())
+  plateNo       String   @unique
+  model         String
+  carTypeId     String
+  carType       CarType  @relation(fields: [carTypeId], references: [id])
+  powertrain    String   // "EV" | "PETROL"
+  seats         Int
+  usableRangeKm Int
+  odometerKm    Int
+  currentLevel  Int      @default(100) // % battery charge or fuel level
+  needsRefuel   Boolean  @default(false)
+  status        String   @default("AVAILABLE") // AVAILABLE, IN_USE, MAINTENANCE, OUT_OF_SERVICE
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bookings          Booking[]
+  maintenanceBlocks MaintenanceBlock[]
+}
+
+model Driver {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  licenseNo String
+  deviceId  String
+  status    String   @default("AVAILABLE") // AVAILABLE, ON_TRIP, OFF_DUTY
+  bookings  Booking[]
+}
+
+model Booking {
+  id                  String   @id @default(cuid())
+  bookingNo           String   @unique
+  requesterId         String
+  requester           User     @relation("RequesterBookings", fields: [requesterId], references: [id])
+  startAt             DateTime
+  endAt               DateTime
+  pickupLocation      String   @default("Head Office Lobby")
+  destination         String
+  purpose             String
+  passengers          Int
+  estDistanceKm       Int
+  preferredCarTypeId  String?
+  preferredPowertrain String   @default("ANY") // EV, PETROL, ANY
+  channel             String   @default("APP") // APP, WHATSAPP
+  status              String   @default("PENDING_APPROVAL") // PENDING_APPROVAL, CONFIRMED, IN_PROGRESS, COMPLETED, REJECTED, REVISION_NEEDED, CANCELLED, EXPIRED, NO_SHOW
+  vehicleId           String?
+  vehicle             Vehicle? @relation(fields: [vehicleId], references: [id])
+  driverId            String?
+  driver              Driver?  @relation(fields: [driverId], references: [id])
+  decidedById         String?
+  decidedBy           User?    @relation("DeciderBookings", fields: [decidedById], references: [id])
+  decidedAt           DateTime?
+  decisionNote        String?
+  lateCancelFlag      Boolean  @default(false)
+  overrideFlag        Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  history BookingStatusHistory[]
+  trip    Trip?
+}
+
+model BookingStatusHistory {
+  id         String   @id @default(cuid())
+  bookingId  String
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  fromStatus String
+  toStatus   String
+  actorId    String
+  reason     String?
+  at         DateTime @default(now())
+}
+
+model Trip {
+  id            String     @id @default(cuid())
+  bookingId     String     @unique
+  booking       Booking    @relation(fields: [bookingId], references: [id])
+  checkoutAt    DateTime?
+  checkinAt     DateTime?
+  odoStart      Int?
+  odoEnd        Int?
+  distanceKm    Int?
+  levelStart    Int?       // % EV battery or fuel at start
+  levelEnd      Int?       // % EV battery or fuel at end
+  actualUsers   String     // JSON array of employee IDs/names who rode
+  incidentNote  String?
+  lateReturn    Boolean    @default(false)
+  lowFuelFlag   Boolean    @default(false)
+  gpsLostFlag   Boolean    @default(false)
+  gpsPoints     GpsPoint[]
+}
+
+model GpsPoint {
+  id         String   @id @default(cuid())
+  tripId     String
+  trip       Trip     @relation(fields: [tripId], references: [id])
+  lat        Float
+  lng        Float
+  label      String?
+  recordedAt DateTime @default(now())
+}
+
+model MaintenanceBlock {
+  id        String   @id @default(cuid())
+  vehicleId String
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id])
+  startAt   DateTime
+  endAt     DateTime
+  reason    String
+  createdBy String
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  event     String
+  title     String
+  message   String
+  channel   String   @default("APP") // APP, WHATSAPP
+  status    String   @default("SENT")
+  read      Boolean  @default(false)
+  sentAt    DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
+  actorName String
+  actorRole String
+  action    String
+  entity    String
+  entityId  String
+  summary   String
+  before    String?
+  after     String?
+  at        DateTime @default(now())
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedBy String
+  updatedAt DateTime @updatedAt
+}

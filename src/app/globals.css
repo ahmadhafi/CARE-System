@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --font-samsung: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --samsung-navy: #1428A0;
+  --samsung-blue: #0066FF;
+  --samsung-sky: #E8F0FE;
+  --samsung-bg: #F2F5FA;
+}
+
+body {
+  font-family: var(--font-samsung);
+  background-color: var(--samsung-bg);
+  color: #121621;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Samsung One UI Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #eef2f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b8c7e6;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1428A0;
+}
