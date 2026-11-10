@@ -162,7 +162,7 @@ export default function WorkplaceAdminDashboard({
   const [newUserDept, setNewUserDept] = useState("Commercial & Sales");
   const [newUserPhone, setNewUserPhone] = useState("0812900900");
   const [newUserRole, setNewUserRole] = useState<UserRole>("EMPLOYEE");
-  const [newUserPass, setNewUserPass] = useState("CareUser2026!");
+  const [newUserPass, setNewUserPass] = useState("");
 
   async function fetchReportsData() {
     try {
@@ -2476,12 +2476,15 @@ export default function WorkplaceAdminDashboard({
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Kata Sandi Awal
+                  Kata Sandi Awal (Min. 8 karakter, Huruf Besar, Kecil & Angka) *
                 </label>
                 <input
-                  type="text"
+                  type="password"
+                  required
+                  minLength={8}
                   value={newUserPass}
                   onChange={(e) => setNewUserPass(e.target.value)}
+                  placeholder="Masukkan kata sandi awal yang kuat"
                   className="w-full px-3 py-2 bg-[#F4F6FA] border border-slate-200 rounded-xl text-sm font-mono"
                 />
               </div>

@@ -3,13 +3,15 @@ import { isWorkplaceAdmin } from "@/lib/auth";
 import { getActiveServerUser } from "@/lib/server-guard";
 import {
   appendAuditLog,
+  DatabaseState,
   findAvailableDrivers,
   findAvailableVehicles,
-  getDb,
+  generateBookingNo,
   hasTimeOverlapWithBuffer,
+  loadDbAsync,
   notifyAllWorkplaceAdmins,
   pushNotification,
-  saveDb,
+  saveDbAsync,
   suggestAlternativeSlots,
 } from "@/lib/store";
 import { Booking } from "@/lib/types";
@@ -19,8 +21,7 @@ import {
   sanitizeText,
 } from "@/lib/validations";
 
-function runAutomatedBookingLifecycleChecks() {
-  const db = getDb();
+async function runAutomatedBookingLifecycleChecks(db: DatabaseState) {
   const nowMs = Date.now();
   const graceMs = db.settings.noShowGraceMinutes * 60_000;
   let changed = false;
@@ -52,7 +53,7 @@ function runAutomatedBookingLifecycleChecks() {
       changed = true;
     }
 
-    // FR-030: Confirmed booking becomes NO_SHOW if driver hasn't checked out within grace period (only for past bookings > 3 hrs ago in demo)
+    // FR-030: Confirmed booking becomes NO_SHOW if driver hasn't checked out within grace period
     if (
       bk.status === "CONFIRMED" &&
       startMs + graceMs * 6 < nowMs &&
@@ -67,7 +68,8 @@ function runAutomatedBookingLifecycleChecks() {
         toStatus: "NO_SHOW",
         actorId: "SYSTEM",
         actorName: "CARE System Automation",
-        reason: "Melewati batas waktu toleransi (Grace Period) tanpa Check-Out (FR-030)",
+        reason:
+          "Melewati batas waktu toleransi (Grace Period) tanpa Check-Out (FR-030)",
         at: bk.updatedAt,
       });
       changed = true;
@@ -75,7 +77,7 @@ function runAutomatedBookingLifecycleChecks() {
   }
 
   if (changed) {
-    saveDb(db);
+    await saveDbAsync(db);
   }
 }
 
@@ -85,8 +87,8 @@ export async function GET() {
     return auth.errorResponse!;
   }
 
-  runAutomatedBookingLifecycleChecks();
-  const db = getDb();
+  const db = await loadDbAsync();
+  await runAutomatedBookingLifecycleChecks(db);
   const user = auth.user;
 
   let visibleBookings = db.bookings;
@@ -98,7 +100,6 @@ export async function GET() {
       ? db.bookings.filter((b) => b.driverId === driverProfile.id)
       : [];
   } else {
-    // FR-004: Employee sees only own bookings, newest first
     visibleBookings = db.bookings.filter((b) => b.requesterId === user.id);
   }
 
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
     }
 
     const d = parsed.data;
-    const db = getDb();
+    const db = await loadDbAsync();
     const startMs = new Date(d.startAt).getTime();
     const endMs = new Date(d.endAt).getTime();
     const nowMs = Date.now();
@@ -175,7 +176,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // BR-11: Check minimum booking notice (unless Admin urgent override)
     const minNoticeMs = db.settings.minBookingNoticeHours * 3600_000;
     const isAdminUrgent =
       isWorkplaceAdmin(auth.user.role) && d.urgentOverrideByAdmin;
@@ -188,7 +188,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check max fleet capacity (FR-003)
     const maxSeats = Math.max(
       ...db.vehicles
         .filter((v) => v.status !== "OUT_OF_SERVICE")
@@ -204,7 +203,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // FR-002: Check if at least one fitting vehicle is available for the requested slot
     const freeVehicles = findAvailableVehicles({
       startAt: d.startAt,
       endAt: d.endAt,
@@ -232,7 +230,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // FR-006 & BR-08: EV Range check with 1.2x buffer
     const selectedCarType = d.preferredCarTypeId
       ? db.carTypes.find((c) => c.id === d.preferredCarTypeId)
       : null;
@@ -249,7 +246,6 @@ export async function POST(request: Request) {
     );
     const evRangeWarning = isEvPreferred && requiredRange > maxEvRange;
 
-    // Determine requester (Employee or Admin on behalf of employee per BR-11)
     let requester = auth.user;
     if (isWorkplaceAdmin(auth.user.role) && d.behalfOfUserId) {
       const targetEmp = db.users.find((u) => u.id === d.behalfOfUserId);
@@ -257,10 +253,11 @@ export async function POST(request: Request) {
     }
 
     const nowIso = new Date().toISOString();
-    const bookingNo = `BK-${String(261100 + db.bookings.length + 1)}`;
+    const bookingId = `bk-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const bookingNo = generateBookingNo();
 
     const newBooking: Booking = {
-      id: `bk-${Date.now()}`,
+      id: bookingId,
       bookingNo,
       requesterId: requester.id,
       requesterName: requester.name,
@@ -277,7 +274,7 @@ export async function POST(request: Request) {
       preferredCarTypeName: selectedCarType?.name || "Semua Tipe Mobil",
       preferredPowertrain: d.preferredPowertrain,
       channel: d.channel,
-      status: "PENDING_APPROVAL", // G1: Always requires Workplace Solution Admin approval
+      status: "PENDING_APPROVAL",
       vehicleId: null,
       vehiclePlate: null,
       vehicleModel: null,
@@ -297,7 +294,7 @@ export async function POST(request: Request) {
       history: [
         {
           id: `h-${Date.now()}`,
-          bookingId: `bk-${Date.now()}`,
+          bookingId,
           fromStatus: "NEW",
           toStatus: "PENDING_APPROVAL",
           actorId: auth.user.id,
@@ -310,7 +307,7 @@ export async function POST(request: Request) {
     };
 
     db.bookings.unshift(newBooking);
-    saveDb(db);
+    await saveDbAsync(db);
 
     pushNotification({
       userId: requester.id,
@@ -364,7 +361,7 @@ export async function PATCH(request: Request) {
   try {
     const body = await request.json();
     const bookingId = String(body.bookingId || "");
-    const db = getDb();
+    const db = await loadDbAsync();
     const booking = db.bookings.find((b) => b.id === bookingId);
 
     if (!booking) {
@@ -423,7 +420,7 @@ export async function PATCH(request: Request) {
         at: nowIso,
       });
 
-      saveDb(db);
+      await saveDbAsync(db);
 
       notifyAllWorkplaceAdmins({
         event: "BOOKING_CANCELLED",
@@ -473,17 +470,71 @@ export async function PATCH(request: Request) {
         );
       }
 
+      const nextDest = body.destination
+        ? sanitizeText(String(body.destination))
+        : booking.destination;
+      const nextPurpose = body.purpose
+        ? sanitizeText(String(body.purpose))
+        : booking.purpose;
+      const nextPickup = body.pickupLocation
+        ? sanitizeText(String(body.pickupLocation))
+        : booking.pickupLocation;
+      const nextPax = body.passengers
+        ? Number(body.passengers)
+        : booking.passengers;
+      const nextDist = body.estDistanceKm
+        ? Number(body.estDistanceKm)
+        : booking.estDistanceKm;
+      const nextStart = body.startAt ? String(body.startAt) : booking.startAt;
+      const nextEnd = body.endAt ? String(body.endAt) : booking.endAt;
+
+      if (
+        nextDest.length < 3 ||
+        nextPurpose.length < 4 ||
+        isNaN(nextPax) ||
+        nextPax < 1 ||
+        nextPax > 15 ||
+        isNaN(nextDist) ||
+        nextDist < 1 ||
+        nextDist > 2000 ||
+        new Date(nextEnd).getTime() <= new Date(nextStart).getTime()
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Data perubahan booking tidak valid. Pastikan tujuan, keperluan, jumlah penumpang, dan waktu perjalanan benar (FR-003).",
+          },
+          { status: 400 }
+        );
+      }
+
+      const freeForEdit = findAvailableVehicles({
+        startAt: nextStart,
+        endAt: nextEnd,
+        passengers: nextPax,
+        preferredCarTypeId: booking.preferredCarTypeId,
+        preferredPowertrain: booking.preferredPowertrain,
+        excludeBookingId: booking.id,
+      });
+
+      if (freeForEdit.length === 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Tidak ada kendaraan yang tersedia untuk jumlah penumpang atau jadwal yang baru dipilih (FR-002).",
+          },
+          { status: 409 }
+        );
+      }
+
       const prevStatus = booking.status;
-      if (body.destination)
-        booking.destination = sanitizeText(String(body.destination));
-      if (body.purpose) booking.purpose = sanitizeText(String(body.purpose));
-      if (body.pickupLocation)
-        booking.pickupLocation = sanitizeText(String(body.pickupLocation));
-      if (body.passengers) booking.passengers = Number(body.passengers);
-      if (body.estDistanceKm)
-        booking.estDistanceKm = Number(body.estDistanceKm);
-      if (body.startAt) booking.startAt = String(body.startAt);
-      if (body.endAt) booking.endAt = String(body.endAt);
+      booking.destination = nextDest;
+      booking.purpose = nextPurpose;
+      booking.pickupLocation = nextPickup;
+      booking.passengers = nextPax;
+      booking.estDistanceKm = nextDist;
+      booking.startAt = nextStart;
+      booking.endAt = nextEnd;
 
       booking.status = "PENDING_APPROVAL";
       booking.updatedAt = nowIso;
@@ -494,11 +545,12 @@ export async function PATCH(request: Request) {
         toStatus: "PENDING_APPROVAL",
         actorId: auth.user.id,
         actorName: auth.user.name,
-        reason: "Pemohon memperbarui rincian perjalanan dan mengirim ulang ke Workplace Solution",
+        reason:
+          "Pemohon memperbarui rincian perjalanan dan mengirim ulang ke Workplace Solution",
         at: nowIso,
       });
 
-      saveDb(db);
+      await saveDbAsync(db);
 
       notifyAllWorkplaceAdmins({
         event: "BOOKING_RESUBMITTED",
@@ -509,11 +561,12 @@ export async function PATCH(request: Request) {
 
       return NextResponse.json({
         booking,
-        message: "Perubahan booking berhasil disimpan dan dikirim kembali ke antrean Workplace Solution.",
+        message:
+          "Perubahan booking berhasil disimpan dan dikirim kembali ke antrean Workplace Solution.",
       });
     }
 
-    // Case 3: Workplace Solution Admin decisions (APPROVE, REJECT, REVISION, OVERRIDE, REASSIGN)
+    // Case 3: Workplace Solution Admin decisions
     if (!isWorkplaceAdmin(auth.user.role)) {
       return NextResponse.json(
         {
@@ -535,7 +588,6 @@ export async function PATCH(request: Request) {
     const dec = parsedDecision.data;
 
     if (dec.action === "REJECT") {
-      // FR-009: Workplace Solution Admin MUST enter a reason to reject
       if (!dec.reason || dec.reason.trim().length < 3) {
         return NextResponse.json(
           {
@@ -564,7 +616,7 @@ export async function PATCH(request: Request) {
         at: nowIso,
       });
 
-      saveDb(db);
+      await saveDbAsync(db);
 
       pushNotification({
         userId: booking.requesterId,
@@ -617,7 +669,7 @@ export async function PATCH(request: Request) {
         at: nowIso,
       });
 
-      saveDb(db);
+      await saveDbAsync(db);
 
       pushNotification({
         userId: booking.requesterId,
@@ -644,7 +696,6 @@ export async function PATCH(request: Request) {
       });
     }
 
-    // APPROVE, REASSIGN, or OVERRIDE (FR-008, FR-011, FR-021, FR-022)
     if (
       dec.action === "APPROVE" ||
       dec.action === "REASSIGN" ||
@@ -692,7 +743,6 @@ export async function PATCH(request: Request) {
         );
       }
 
-      // FR-011: Re-check conflicts at the exact moment of approval
       const buffer = db.settings.turnaroundBufferMinutes;
       const conflictingBooking = db.bookings.find(
         (b) =>
@@ -731,7 +781,6 @@ export async function PATCH(request: Request) {
         );
       }
 
-      // If OVERRIDE and there is a conflicting confirmed booking, return displaced booking to queue and notify requester (FR-022)
       if (conflictingBooking && dec.action === "OVERRIDE") {
         conflictingBooking.status = "REVISION_NEEDED";
         conflictingBooking.vehicleId = null;
@@ -789,9 +838,8 @@ export async function PATCH(request: Request) {
         at: nowIso,
       });
 
-      saveDb(db);
+      await saveDbAsync(db);
 
-      // Notify requester (FR-046)
       pushNotification({
         userId: booking.requesterId,
         event: "BOOKING_APPROVED",
@@ -801,7 +849,6 @@ export async function PATCH(request: Request) {
         channel: booking.channel,
       });
 
-      // Notify driver (FR-048)
       pushNotification({
         userId: driver.userId,
         event: "DRIVER_ASSIGNED",

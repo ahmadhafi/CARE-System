@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireWorkplaceAdminUser } from "@/lib/server-guard";
-import { appendAuditLog, getDb, saveDb } from "@/lib/store";
+import { appendAuditLog, loadDbAsync, saveDbAsync } from "@/lib/store";
 import { sanitizeText } from "@/lib/validations";
 
 export async function GET(request: Request) {
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   const toParam = searchParams.get("to");
   const powertrainFilter = searchParams.get("powertrain") || "ALL";
 
-  const db = getDb();
+  const db = await loadDbAsync();
 
   const fromMs = fromParam ? new Date(fromParam).getTime() : 0;
   const toMs = toParam
@@ -54,7 +54,6 @@ export async function GET(request: Request) {
       return acc + Math.max(0.5, Number(dur.toFixed(1)));
     }, 0);
 
-    // Assume 160 working hours per month baseline for utilization %
     const utilizationPct = Math.min(
       100,
       Math.round((totalHours / 40) * 100)
@@ -276,7 +275,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const db = getDb();
+    const db = await loadDbAsync();
     const before = { ...db.settings };
 
     if (typeof body.turnaroundBufferMinutes === "number") {
@@ -327,7 +326,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    saveDb(db);
+    await saveDbAsync(db);
 
     appendAuditLog({
       actorId: adminAuth.user.id,

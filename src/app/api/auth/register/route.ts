@@ -3,9 +3,9 @@ import { hashPassword, sanitizeUser } from "@/lib/auth";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import {
   appendAuditLog,
-  getDb,
+  loadDbAsync,
   notifyAllWorkplaceAdmins,
-  saveDb,
+  saveDbAsync,
 } from "@/lib/store";
 import { User } from "@/lib/types";
 import { registerSchema } from "@/lib/validations";
@@ -13,7 +13,7 @@ import { registerSchema } from "@/lib/validations";
 export async function POST(request: Request) {
   try {
     const ip = getClientIp(request);
-    const rate = checkRateLimit(`register:${ip}`, 5, 60_000, 300_000);
+    const rate = await checkRateLimit(`register:${ip}`, 5, 60_000, 300_000);
     if (!rate.allowed) {
       return NextResponse.json(
         {
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     }
 
     const data = parsed.data;
-    const db = getDb();
+    const db = await loadDbAsync();
 
     const existingEmp = db.users.find(
       (u) => u.employeeNo.toLowerCase() === data.employeeNo.toLowerCase()
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       department: data.department,
       phone: data.phone,
       role: data.requestedRole,
-      status: "PENDING_APPROVAL", // Mandatory Workplace Solution Admin Approval
+      status: "PENDING_APPROVAL",
       approvedBy: null,
       approvedAt: null,
       rejectedReason: null,
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     };
 
     db.users.unshift(newUser);
-    saveDb(db);
+    await saveDbAsync(db);
 
     notifyAllWorkplaceAdmins({
       event: "USER_REGISTRATION_PENDING",

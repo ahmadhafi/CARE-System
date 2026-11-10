@@ -6,12 +6,14 @@ import {
 } from "@/lib/server-guard";
 import {
   appendAuditLog,
-  getDb,
+  loadDbAsync,
   pushNotification,
-  saveDb,
+  saveDbAsync,
 } from "@/lib/store";
 import { User, UserRole, UserStatus } from "@/lib/types";
 import { sanitizeText } from "@/lib/validations";
+
+const STRONG_PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,128}$/;
 
 export async function GET() {
   const auth = await getActiveServerUser();
@@ -19,9 +21,8 @@ export async function GET() {
     return auth.errorResponse!;
   }
 
-  const db = getDb();
+  const db = await loadDbAsync();
 
-  // Workplace Solution Admin gets full user list + driver records
   if (isWorkplaceAdmin(auth.user.role)) {
     return NextResponse.json({
       users: db.users.map(sanitizeUser),
@@ -29,7 +30,6 @@ export async function GET() {
     });
   }
 
-  // Employees & Drivers get basic active employee directory (for actual passenger selection FR-028)
   const activeEmployees = db.users
     .filter((u) => u.status === "ACTIVE")
     .map((u) => ({
@@ -80,7 +80,7 @@ export async function PATCH(request: Request) {
       deviceId?: string;
     };
 
-    const db = getDb();
+    const db = await loadDbAsync();
     const target = db.users.find((u) => u.id === userId);
     if (!target) {
       return NextResponse.json(
@@ -89,17 +89,33 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Prevent Admin from deactivating their own account
+    // Prevent Admin from deactivating or changing their own role
     if (
       target.id === adminAuth.user.id &&
-      (action === "DEACTIVATE" || action === "REJECT")
+      (action === "DEACTIVATE" ||
+        action === "REJECT" ||
+        (role && role !== target.role))
     ) {
       return NextResponse.json(
         {
           error:
-            "Anda tidak dapat menonaktifkan akun Workplace Solution Admin Anda sendiri.",
+            "Anda tidak dapat menonaktifkan atau mengubah peran (role) akun Anda sendiri.",
         },
         { status: 400 }
+      );
+    }
+
+    // Privilege escalation guard: only SUPER_ADMIN can grant or modify SUPER_ADMIN
+    if (
+      (role === "SUPER_ADMIN" || target.role === "SUPER_ADMIN") &&
+      adminAuth.user.role !== "SUPER_ADMIN"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Hanya Super Admin yang berwenang menetapkan atau mengubah akun dengan peran SUPER_ADMIN.",
+        },
+        { status: 403 }
       );
     }
 
@@ -113,7 +129,6 @@ export async function PATCH(request: Request) {
       target.rejectedReason = null;
       if (role) target.role = role;
 
-      // Ensure Driver profile exists if approved as DRIVER (FR-018)
       if (target.role === "DRIVER") {
         const existingDriver = db.drivers.find((d) => d.userId === target.id);
         if (!existingDriver) {
@@ -147,7 +162,6 @@ export async function PATCH(request: Request) {
         ? sanitizeText(reason)
         : "Dinonaktifkan oleh Workplace Solution Admin";
 
-      // If driver, set OFF_DUTY
       const drv = db.drivers.find((d) => d.userId === target.id);
       if (drv) drv.status = "OFF_DUTY";
     } else if (action === "ACTIVATE") {
@@ -184,7 +198,7 @@ export async function PATCH(request: Request) {
     }
 
     target.updatedAt = nowIso;
-    saveDb(db);
+    await saveDbAsync(db);
 
     appendAuditLog({
       actorId: adminAuth.user.id,
@@ -220,7 +234,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const db = getDb();
+    const db = await loadDbAsync();
 
     const employeeNo = sanitizeText(String(body.employeeNo || "")).toUpperCase();
     const email = sanitizeText(String(body.email || "")).toLowerCase();
@@ -229,11 +243,34 @@ export async function POST(request: Request) {
     const phone = sanitizeText(String(body.phone || "0812000000"));
     const role: UserRole = body.role || "EMPLOYEE";
     const status: UserStatus = body.status || "ACTIVE";
-    const rawPassword = String(body.password || "CareUser2026!");
+    const rawPassword = String(body.password || "");
 
     if (!employeeNo || !email || !name) {
       return NextResponse.json(
         { error: "ID Karyawan, Email, dan Nama Lengkap wajib diisi." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      role === "SUPER_ADMIN" &&
+      adminAuth.user.role !== "SUPER_ADMIN"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Hanya Super Admin yang berwenang membuat akun dengan peran SUPER_ADMIN.",
+        },
+        { status: 403 }
+      );
+    }
+
+    if (!STRONG_PASSWORD_REGEX.test(rawPassword)) {
+      return NextResponse.json(
+        {
+          error:
+            "Kata sandi wajib diisi (minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka).",
+        },
         { status: 400 }
       );
     }
@@ -286,7 +323,7 @@ export async function POST(request: Request) {
       });
     }
 
-    saveDb(db);
+    await saveDbAsync(db);
 
     appendAuditLog({
       actorId: adminAuth.user.id,

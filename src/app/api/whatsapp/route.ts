@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { isWorkplaceAdmin } from "@/lib/auth";
 import { getActiveServerUser } from "@/lib/server-guard";
 import {
   appendAuditLog,
-  getDb,
+  generateBookingNo,
+  loadDbAsync,
   notifyAllWorkplaceAdmins,
-  saveDb,
+  saveDbAsync,
 } from "@/lib/store";
 import { Booking, WhatsAppSession } from "@/lib/types";
 import { sanitizeText } from "@/lib/validations";
@@ -17,9 +19,12 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const rawPhone = sanitizeText(String(body.phone || auth.user.phone));
+    // Non-admin users can only simulate from their own registered phone number
+    const rawPhone = isWorkplaceAdmin(auth.user.role)
+      ? sanitizeText(String(body.phone || auth.user.phone))
+      : auth.user.phone;
     const text = sanitizeText(String(body.message || "")).trim();
-    const db = getDb();
+    const db = await loadDbAsync();
 
     // FR-039: Identify employee by registered WhatsApp number
     const matchedUser = db.users.find(
@@ -29,7 +34,7 @@ export async function POST(request: Request) {
     );
 
     const nowIso = new Date().toISOString();
-    let session: WhatsAppSession = db.whatsappSessions[rawPhone] || {
+    const session: WhatsAppSession = db.whatsappSessions[rawPhone] || {
       phone: rawPhone,
       userId: matchedUser?.id,
       userName: matchedUser?.name,
@@ -60,7 +65,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const reply = (botText: string) => {
+    const reply = async (botText: string) => {
       session.messages.push({
         id: `wa-b-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
         sender: "BOT",
@@ -68,20 +73,18 @@ export async function POST(request: Request) {
         at: new Date().toISOString(),
       });
       db.whatsappSessions[rawPhone] = session;
-      saveDb(db);
+      await saveDbAsync(db);
       return NextResponse.json({ session });
     };
 
-    // FR-039: Unregistered WhatsApp number refused
     if (!matchedUser) {
       return reply(
         `Maaf, nomor WhatsApp (${rawPhone}) belum terdaftar sebagai karyawan aktif. Silakan hubungi Workplace Solution di ${db.settings.whatsappContactNumber} untuk registrasi nomor Anda. [FR-039]`
       );
     }
 
-    const handleInvalidInput = (hint: string) => {
+    const handleInvalidInput = async (hint: string) => {
       session.retryCount += 1;
-      // FR-041: Re-asks up to 3 times, then falls back to app or Workplace Solution contact
       if (session.retryCount >= 3) {
         session.step = "MENU";
         session.retryCount = 0;
@@ -90,13 +93,16 @@ export async function POST(request: Request) {
           `Maaf, kami belum bisa memproses setelah 3 kali percobaan. Silakan gunakan aplikasi CARE atau hubungi Workplace Solution di ${db.settings.whatsappContactNumber}. [FR-041]`
         );
       }
-      return reply(
-        `${hint} (Percobaan ${session.retryCount} dari 3)`
-      );
+      return reply(`${hint} (Percobaan ${session.retryCount} dari 3)`);
     };
 
     const upper = text.toUpperCase();
-    if (upper === "MENU" || upper === "RESET" || upper === "PESAN MOBIL" || !text) {
+    if (
+      upper === "MENU" ||
+      upper === "RESET" ||
+      upper === "PESAN MOBIL" ||
+      !text
+    ) {
       session.step = "MENU";
       session.retryCount = 0;
       session.draft = {};
@@ -175,7 +181,7 @@ export async function POST(request: Request) {
       target.updatedAt = nowIso;
       session.step = "MENU";
       session.retryCount = 0;
-      saveDb(db);
+      await saveDbAsync(db);
       return reply(
         `✅ Booking *${target.bookingNo}* tujuan ${target.destination} telah berhasil dibatalkan melalui WhatsApp Bot.`
       );
@@ -192,7 +198,7 @@ export async function POST(request: Request) {
       session.step = "ASK_TIME";
       session.retryCount = 0;
       return reply(
-        "Jam berangkat dan jam kembali? Gunakan format HH:MM-HH:MM (contoh: 09:00-15:00)"
+        "Jam berangkat dan jam kembali (WIB)? Gunakan format HH:MM-HH:MM (contoh: 09:00-15:00)"
       );
     }
 
@@ -204,22 +210,27 @@ export async function POST(request: Request) {
         );
       }
       const [dd, mm, yyyy] = (session.draft.dateStr || "15/12/2026").split("/");
-      const startIso = new Date(
-        `${yyyy}-${mm}-${dd}T${match[1]}:${match[2]}:00`
-      ).toISOString();
-      const endIso = new Date(
-        `${yyyy}-${mm}-${dd}T${match[3]}:${match[4]}:00`
-      ).toISOString();
+      // Parse explicitly in Asia/Jakarta (WIB, UTC+07:00) so Vercel UTC servers don't shift by 7h
+      const startDate = new Date(
+        `${yyyy}-${mm}-${dd}T${match[1]}:${match[2]}:00+07:00`
+      );
+      const endDate = new Date(
+        `${yyyy}-${mm}-${dd}T${match[3]}:${match[4]}:00+07:00`
+      );
 
-      if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
+      if (
+        isNaN(startDate.getTime()) ||
+        isNaN(endDate.getTime()) ||
+        endDate.getTime() <= startDate.getTime()
+      ) {
         return handleInvalidInput(
           "Jam kembali harus setelah jam berangkat. Contoh: 09:00-15:00."
         );
       }
 
       session.draft.timeRangeStr = text;
-      session.draft.startAt = startIso;
-      session.draft.endAt = endIso;
+      session.draft.startAt = startDate.toISOString();
+      session.draft.endAt = endDate.toISOString();
       session.step = "ASK_DESTINATION";
       session.retryCount = 0;
       return reply("Tujuan perjalanan dinas? (contoh: Kantor Klien Sudirman)");
@@ -256,7 +267,7 @@ export async function POST(request: Request) {
       session.step = "CONFIRM";
       session.retryCount = 0;
       return reply(
-        `📋 *Ringkasan Permintaan Mobil*\n• Tanggal: ${session.draft.dateStr}\n• Jam: ${session.draft.timeRangeStr}\n• Tujuan: ${session.draft.destination}\n• Penumpang: ${session.draft.passengers} orang\n• Keperluan: ${session.draft.purpose}\n\nBalas *YA* untuk kirim ke Workplace Solution atau *TIDAK* untuk batal.`
+        `📋 *Ringkasan Permintaan Mobil*\n• Tanggal: ${session.draft.dateStr}\n• Jam: ${session.draft.timeRangeStr} WIB\n• Tujuan: ${session.draft.destination}\n• Penumpang: ${session.draft.passengers} orang\n• Keperluan: ${session.draft.purpose}\n\nBalas *YA* untuk kirim ke Workplace Solution atau *TIDAK* untuk batal.`
       );
     }
 
@@ -268,9 +279,12 @@ export async function POST(request: Request) {
         return reply("Draft permintaan dibatalkan. Ketik MENU untuk mulai lagi.");
       }
       if (upper === "YA") {
-        const bookingNo = `BK-${String(261100 + db.bookings.length + 1)}`;
+        const bookingNo = generateBookingNo();
+        const bkId = `bk-wa-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 6)}`;
         const newBk: Booking = {
-          id: `bk-wa-${Date.now()}`,
+          id: bkId,
           bookingNo,
           requesterId: matchedUser.id,
           requesterName: matchedUser.name,
@@ -311,7 +325,7 @@ export async function POST(request: Request) {
           history: [
             {
               id: `h-wa-${Date.now()}`,
-              bookingId: `bk-wa-${Date.now()}`,
+              bookingId: bkId,
               fromStatus: "NEW",
               toStatus: "PENDING_APPROVAL",
               actorId: matchedUser.id,
@@ -327,7 +341,7 @@ export async function POST(request: Request) {
         session.step = "MENU";
         session.draft = {};
         session.retryCount = 0;
-        saveDb(db);
+        await saveDbAsync(db);
 
         notifyAllWorkplaceAdmins({
           event: "WHATSAPP_BOOKING_SUBMITTED",

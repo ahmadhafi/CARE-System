@@ -10,7 +10,7 @@ export function sanitizeText(input: string): string {
 
 const cleanString = (min: number, max: number, msg: string) =>
   z
-    .string({ required_error: msg })
+    .string(msg)
     .trim()
     .min(min, msg)
     .max(max, `Maksimal ${max} karakter / Max ${max} chars`)
@@ -23,17 +23,16 @@ export const loginSchema = z.object({
     "ID Karyawan atau Email wajib diisi (Employee ID or Email is required)"
   ),
   password: z
-    .string({ required_error: "Kata sandi wajib diisi (Password is required)" })
+    .string("Kata sandi wajib diisi (Password is required)")
     .min(6, "Kata sandi minimal 6 karakter (Minimum 6 characters)")
     .max(128),
 });
 
 export const registerSchema = z.object({
   employeeNo: z
-    .string({
-      required_error:
-        "Nomor Induk Karyawan (NIK) wajib diisi / Employee ID required",
-    })
+    .string(
+      "Nomor Induk Karyawan (NIK) wajib diisi / Employee ID required"
+    )
     .trim()
     .min(3, "Nomor Induk Karyawan (NIK) minimal 3 karakter")
     .max(30, "Maksimal 30 karakter")
@@ -59,9 +58,7 @@ export const registerSchema = z.object({
     "Departemen wajib diisi (Department is required)"
   ),
   phone: z
-    .string({
-      required_error: "Nomor WhatsApp wajib diisi (WhatsApp number is required)",
-    })
+    .string("Nomor WhatsApp wajib diisi (WhatsApp number is required)")
     .trim()
     .min(8, "Nomor WhatsApp minimal 8 digit")
     .max(20, "Nomor WhatsApp maksimal 20 digit")
@@ -103,12 +100,12 @@ export const bookingCreateSchema = z.object({
     "Keperluan perjalanan dinas wajib diisi (Business purpose is required)"
   ),
   passengers: z
-    .number({ invalid_type_error: "Jumlah penumpang harus berupa angka" })
+    .number("Jumlah penumpang harus berupa angka")
     .int()
     .min(1, "Minimal 1 penumpang (At least 1 passenger)")
     .max(15, "Jumlah penumpang melebihi kapasitas armada (Exceeds fleet capacity)"),
   estDistanceKm: z
-    .number({ invalid_type_error: "Estimasi jarak harus berupa angka" })
+    .number("Estimasi jarak harus berupa angka")
     .int()
     .min(1, "Estimasi jarak minimal 1 km")
     .max(2000, "Estimasi jarak maksimal 2000 km"),
@@ -136,7 +133,7 @@ export const bookingDecisionSchema = z.object({
 export const carTypeSchema = z.object({
   name: cleanString(2, 60, "Nama tipe mobil wajib diisi (Car type name required)"),
   code: z
-    .string({ required_error: "Kode tipe mobil wajib diisi (Code required)" })
+    .string("Kode tipe mobil wajib diisi (Code required)")
     .trim()
     .min(2, "Kode minimal 2 karakter")
     .max(30)
@@ -152,7 +149,7 @@ export const carTypeSchema = z.object({
 
 export const vehicleSchema = z.object({
   plateNo: z
-    .string({ required_error: "Nomor plat kendaraan wajib diisi" })
+    .string("Nomor plat kendaraan wajib diisi")
     .trim()
     .min(4, "Nomor plat minimal 4 karakter")
     .max(20)

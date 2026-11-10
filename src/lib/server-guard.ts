@@ -3,13 +3,13 @@ import { NextResponse } from "next/server";
 import {
   clearSessionCookie,
   isWorkplaceAdmin,
-   sanitizeUser,
+  sanitizeUser,
   SESSION_COOKIE_NAME,
   setSessionCookie,
   signSessionToken,
   verifySessionToken,
 } from "./auth";
-import { getDb } from "./store";
+import { loadDbAsync } from "./store";
 import { SafeUser, User } from "./types";
 
 export async function getActiveServerUser(): Promise<{
@@ -17,7 +17,7 @@ export async function getActiveServerUser(): Promise<{
   safeUser: SafeUser | null;
   errorResponse?: NextResponse;
 }> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) {
@@ -36,7 +36,7 @@ export async function getActiveServerUser(): Promise<{
 
   const payload = await verifySessionToken(token);
   if (!payload) {
-    clearSessionCookie();
+    await clearSessionCookie();
     return {
       user: null,
       safeUser: null,
@@ -50,11 +50,11 @@ export async function getActiveServerUser(): Promise<{
     };
   }
 
-  const db = getDb();
+  const db = await loadDbAsync();
   const liveUser = db.users.find((u) => u.id === payload.sub);
 
   if (!liveUser) {
-    clearSessionCookie();
+    await clearSessionCookie();
     return {
       user: null,
       safeUser: null,
@@ -66,7 +66,7 @@ export async function getActiveServerUser(): Promise<{
   }
 
   if (liveUser.status !== "ACTIVE") {
-    clearSessionCookie();
+    await clearSessionCookie();
     const statusMessage =
       liveUser.status === "PENDING_APPROVAL"
         ? "Akun Anda masih menunggu persetujuan Workplace Solution Admin."
@@ -87,7 +87,7 @@ export async function getActiveServerUser(): Promise<{
   // Rolling 30-minute idle timeout refresh (PRD NFR-004)
   try {
     const refreshedToken = await signSessionToken(liveUser);
-    setSessionCookie(refreshedToken);
+    await setSessionCookie(refreshedToken);
   } catch {
     // Ignore cookie set errors in read-only contexts
   }

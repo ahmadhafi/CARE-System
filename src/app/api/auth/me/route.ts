@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getActiveServerUser } from "@/lib/server-guard";
-import { appendAuditLog, getDb, saveDb } from "@/lib/store";
+import { appendAuditLog, loadDbAsync, saveDbAsync } from "@/lib/store";
 import { sanitizeUser } from "@/lib/auth";
 
 export async function GET() {
@@ -19,7 +19,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json();
-  const db = getDb();
+  const db = await loadDbAsync();
   const target = db.users.find((u) => u.id === auth.user!.id);
   if (!target) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -28,7 +28,7 @@ export async function PATCH(request: Request) {
   if (typeof body.gpsConsent === "boolean") {
     target.gpsConsent = body.gpsConsent;
     target.updatedAt = new Date().toISOString();
-    saveDb(db);
+    await saveDbAsync(db);
 
     appendAuditLog({
       actorId: target.id,

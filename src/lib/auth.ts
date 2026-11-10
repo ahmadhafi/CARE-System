@@ -13,11 +13,31 @@ const SESSION_TIMEOUT_MINUTES = Number(
   process.env.SESSION_TIMEOUT_MINUTES || "30"
 );
 
+// Per-process ephemeral key for local dev only when .env.local has no JWT_SECRET.
+// Never hardcoded in source code; in production JWT_SECRET (>=32 chars) is mandatory.
+declare global {
+  // eslint-disable-next-line no-var
+  var __careDevEphemeralJwtSecret: Uint8Array | undefined;
+}
+
 function getJwtSecretKey(): Uint8Array {
-  const secret =
-    process.env.JWT_SECRET ||
-    "care-system-workplace-solution-internal-server-secret-2026-hmac-sha256";
-  return new TextEncoder().encode(secret);
+  const configured = process.env.JWT_SECRET?.trim();
+  if (configured && configured.length >= 32) {
+    return new TextEncoder().encode(configured);
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "CRITICAL SECURITY ERROR: JWT_SECRET environment variable must be set and at least 32 characters long in production."
+    );
+  }
+
+  if (!global.__careDevEphemeralJwtSecret) {
+    const randomBytes = new Uint8Array(48);
+    crypto.getRandomValues(randomBytes);
+    global.__careDevEphemeralJwtSecret = randomBytes;
+  }
+  return global.__careDevEphemeralJwtSecret;
 }
 
 export interface SessionPayload {
@@ -42,12 +62,15 @@ export async function verifyPassword(
   return bcrypt.compare(plainText, hash);
 }
 
-export function sanitizeUser(user: User): SafeUser {
-  const { passwordHash: _removed, ...safe } = user;
+export function sanitizeUser(user: User | SafeUser): SafeUser {
+  const { passwordHash: _removed, ...safe } = user as User;
+  void _removed;
   return safe;
 }
 
-export async function signSessionToken(user: User): Promise<string> {
+export async function signSessionToken(
+  user: User | SafeUser
+): Promise<string> {
   const payload: SessionPayload = {
     sub: user.id,
     employeeNo: user.employeeNo,
@@ -80,8 +103,8 @@ export async function verifySessionToken(
   }
 }
 
-export function setSessionCookie(token: string): void {
-  const cookieStore = cookies();
+export async function setSessionCookie(token: string): Promise<void> {
+  const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -91,8 +114,8 @@ export function setSessionCookie(token: string): void {
   });
 }
 
-export function clearSessionCookie(): void {
-  const cookieStore = cookies();
+export async function clearSessionCookie(): Promise<void> {
+  const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

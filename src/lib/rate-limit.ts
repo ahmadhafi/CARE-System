@@ -1,7 +1,9 @@
 // ============================================================================
-// Server-Side Rate Limiter & Brute-Force Protection
-// Protects authentication & mutation endpoints from brute-force / DoS attacks
+// Server-Side Rate Limiter & Brute-Force Protection (PostgreSQL + Memory Fallback)
+// Persists across Vercel serverless instances via Prisma `RateLimit` table
 // ============================================================================
+
+import { prisma } from "./db";
 
 interface RateBucket {
   count: number;
@@ -9,15 +11,22 @@ interface RateBucket {
   lockedUntil?: number;
 }
 
-const buckets = new Map<string, RateBucket>();
+const memoryBuckets = new Map<string, RateBucket>();
 
-// Periodic cleanup to prevent memory exhaustion
-function cleanupExpiredBuckets() {
+function isPostgresConfigured(): boolean {
+  const url = process.env.DATABASE_URL?.trim();
+  return Boolean(url && !url.includes("user:password@localhost"));
+}
+
+function cleanupExpiredMemoryBuckets() {
   const now = Date.now();
-  if (buckets.size > 5000) {
-    buckets.forEach((bucket, key) => {
-      if (bucket.resetAt < now && (!bucket.lockedUntil || bucket.lockedUntil < now)) {
-        buckets.delete(key);
+  if (memoryBuckets.size > 5000) {
+    memoryBuckets.forEach((bucket, key) => {
+      if (
+        bucket.resetAt < now &&
+        (!bucket.lockedUntil || bucket.lockedUntil < now)
+      ) {
+        memoryBuckets.delete(key);
       }
     });
   }
@@ -29,22 +38,81 @@ export interface RateLimitResult {
   retryAfterSeconds: number;
 }
 
-/**
- * Checks and increments rate limit for a given identifier (IP + action).
- * @param key Unique identifier (e.g., `login:127.0.0.1:EMP-101`)
- * @param maxAttempts Max allowed requests in window
- * @param windowMs Window duration in ms
- * @param lockoutMs Optional lockout duration if maxAttempts is exceeded
- */
-export function checkRateLimit(
+export async function checkRateLimit(
   key: string,
   maxAttempts: number = 10,
   windowMs: number = 60_000,
   lockoutMs: number = 300_000
-): RateLimitResult {
-  cleanupExpiredBuckets();
+): Promise<RateLimitResult> {
   const now = Date.now();
-  const existing = buckets.get(key);
+
+  if (isPostgresConfigured()) {
+    try {
+      const existing = await prisma.rateLimit.findUnique({ where: { key } });
+
+      if (existing?.lockedUntil && existing.lockedUntil.getTime() > now) {
+        return {
+          allowed: false,
+          remaining: 0,
+          retryAfterSeconds: Math.ceil(
+            (existing.lockedUntil.getTime() - now) / 1000
+          ),
+        };
+      }
+
+      if (!existing || existing.resetAt.getTime() < now) {
+        await prisma.rateLimit.upsert({
+          where: { key },
+          create: {
+            key,
+            count: 1,
+            resetAt: new Date(now + windowMs),
+            lockedUntil: null,
+          },
+          update: {
+            count: 1,
+            resetAt: new Date(now + windowMs),
+            lockedUntil: null,
+          },
+        });
+        return {
+          allowed: true,
+          remaining: maxAttempts - 1,
+          retryAfterSeconds: 0,
+        };
+      }
+
+      const nextCount = existing.count + 1;
+      if (nextCount > maxAttempts) {
+        const lockedUntil = new Date(now + lockoutMs);
+        await prisma.rateLimit.update({
+          where: { key },
+          data: { count: nextCount, lockedUntil },
+        });
+        return {
+          allowed: false,
+          remaining: 0,
+          retryAfterSeconds: Math.ceil(lockoutMs / 1000),
+        };
+      }
+
+      await prisma.rateLimit.update({
+        where: { key },
+        data: { count: nextCount },
+      });
+
+      return {
+        allowed: true,
+        remaining: Math.max(0, maxAttempts - nextCount),
+        retryAfterSeconds: 0,
+      };
+    } catch {
+      // Fall through to memory bucket if DB table not yet migrated
+    }
+  }
+
+  cleanupExpiredMemoryBuckets();
+  const existing = memoryBuckets.get(key);
 
   if (existing?.lockedUntil && existing.lockedUntil > now) {
     return {
@@ -55,7 +123,7 @@ export function checkRateLimit(
   }
 
   if (!existing || existing.resetAt < now) {
-    buckets.set(key, {
+    memoryBuckets.set(key, {
       count: 1,
       resetAt: now + windowMs,
     });
@@ -70,7 +138,7 @@ export function checkRateLimit(
 
   if (existing.count > maxAttempts) {
     existing.lockedUntil = now + lockoutMs;
-    buckets.set(key, existing);
+    memoryBuckets.set(key, existing);
     return {
       allowed: false,
       remaining: 0,
@@ -78,7 +146,7 @@ export function checkRateLimit(
     };
   }
 
-  buckets.set(key, existing);
+  memoryBuckets.set(key, existing);
   return {
     allowed: true,
     remaining: Math.max(0, maxAttempts - existing.count),
@@ -86,8 +154,15 @@ export function checkRateLimit(
   };
 }
 
-export function resetRateLimit(key: string): void {
-  buckets.delete(key);
+export async function resetRateLimit(key: string): Promise<void> {
+  memoryBuckets.delete(key);
+  if (isPostgresConfigured()) {
+    try {
+      await prisma.rateLimit.deleteMany({ where: { key } });
+    } catch {
+      // ignore
+    }
+  }
 }
 
 export function getClientIp(request: Request): string {

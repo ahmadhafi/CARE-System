@@ -5,9 +5,9 @@ import {
 } from "@/lib/server-guard";
 import {
   appendAuditLog,
-  getDb,
   hasTimeOverlapWithBuffer,
-  saveDb,
+  loadDbAsync,
+  saveDbAsync,
 } from "@/lib/store";
 import { CarType, MaintenanceBlock, Vehicle } from "@/lib/types";
 import {
@@ -23,7 +23,7 @@ export async function GET() {
     return auth.errorResponse!;
   }
 
-  const db = getDb();
+  const db = await loadDbAsync();
   return NextResponse.json({
     carTypes: db.carTypes,
     vehicles: db.vehicles,
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       | "CAR_TYPE"
       | "VEHICLE"
       | "MAINTENANCE_BLOCK";
-    const db = getDb();
+    const db = await loadDbAsync();
 
     if (entityType === "CAR_TYPE") {
       const parsed = carTypeSchema.safeParse(body);
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       };
 
       db.carTypes.push(newCarType);
-      saveDb(db);
+      await saveDbAsync(db);
 
       appendAuditLog({
         actorId: adminAuth.user.id,
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
       };
 
       db.vehicles.push(newVehicle);
-      saveDb(db);
+      await saveDbAsync(db);
 
       appendAuditLog({
         actorId: adminAuth.user.id,
@@ -203,7 +203,6 @@ export async function POST(request: Request) {
 
       db.maintenanceBlocks.unshift(newBlock);
 
-      // Find affected confirmed bookings (PRD FR-016)
       const affectedBookings = db.bookings.filter(
         (bk) =>
           bk.vehicleId === veh.id &&
@@ -211,7 +210,7 @@ export async function POST(request: Request) {
           hasTimeOverlapWithBuffer(bk.startAt, bk.endAt, d.startAt, d.endAt, 0)
       );
 
-      saveDb(db);
+      await saveDbAsync(db);
 
       appendAuditLog({
         actorId: adminAuth.user.id,
@@ -254,7 +253,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const db = getDb();
+    const db = await loadDbAsync();
 
     if (body.entityType === "CAR_TYPE") {
       const ct = db.carTypes.find((c) => c.id === body.id);
@@ -276,7 +275,7 @@ export async function PATCH(request: Request) {
       if (typeof body.active === "boolean") ct.active = body.active;
       if (body.powertrain) ct.powertrain = body.powertrain;
 
-      saveDb(db);
+      await saveDbAsync(db);
 
       appendAuditLog({
         actorId: adminAuth.user.id,
@@ -338,7 +337,6 @@ export async function PATCH(request: Request) {
       }
       veh.updatedAt = new Date().toISOString();
 
-      // Check affected bookings if marked OUT_OF_SERVICE or MAINTENANCE (PRD 8f)
       const affectedBookings =
         veh.status === "OUT_OF_SERVICE" || veh.status === "MAINTENANCE"
           ? db.bookings.filter(
@@ -347,7 +345,7 @@ export async function PATCH(request: Request) {
             )
           : [];
 
-      saveDb(db);
+      await saveDbAsync(db);
 
       appendAuditLog({
         actorId: adminAuth.user.id,

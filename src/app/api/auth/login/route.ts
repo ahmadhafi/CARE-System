@@ -10,7 +10,7 @@ import {
   getClientIp,
   resetRateLimit,
 } from "@/lib/rate-limit";
-import { appendAuditLog, getDb } from "@/lib/store";
+import { appendAuditLog, loadDbAsync } from "@/lib/store";
 import { loginSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
     const { identifier, password } = parsed.data;
     const rateKey = `login:${ip}:${identifier.toLowerCase()}`;
-    const rate = checkRateLimit(rateKey, 6, 60_000, 180_000);
+    const rate = await checkRateLimit(rateKey, 6, 60_000, 180_000);
 
     if (!rate.allowed) {
       return NextResponse.json(
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const db = getDb();
+    const db = await loadDbAsync();
     const normalizedId = identifier.trim().toLowerCase();
     const user = db.users.find(
       (u) =>
@@ -71,7 +71,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check Workplace Solution Admin approval & active status
     if (user.status === "PENDING_APPROVAL") {
       return NextResponse.json(
         {
@@ -107,9 +106,9 @@ export async function POST(request: Request) {
       );
     }
 
-    resetRateLimit(rateKey);
+    await resetRateLimit(rateKey);
     const token = await signSessionToken(user);
-    setSessionCookie(token);
+    await setSessionCookie(token);
 
     appendAuditLog({
       actorId: user.id,
@@ -125,7 +124,8 @@ export async function POST(request: Request) {
       user: sanitizeUser(user),
       message: "Login berhasil.",
     });
-  } catch {
+  } catch (err) {
+    console.error("[CARE Login Error]", err);
     return NextResponse.json(
       { error: "Terjadi kesalahan pada server saat memproses login." },
       { status: 500 }

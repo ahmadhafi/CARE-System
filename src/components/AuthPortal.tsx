@@ -26,7 +26,7 @@ interface AuthPortalProps {
 export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
   const [mode, setMode] = useState<"LOGIN" | "REGISTER">("LOGIN");
   const [identifier, setIdentifier] = useState("WS-001");
-  const [password, setPassword] = useState("AdminCare2026!");
+  const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
 
   // Registration state
@@ -110,10 +110,9 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
     }
   }
 
-  function fillQuickDemo(id: string, pass: string) {
+  function fillQuickDemo(id: string) {
     setMode("LOGIN");
     setIdentifier(id);
-    setPassword(pass);
     setErrorMsg(null);
     setSuccessMsg(null);
   }
@@ -193,15 +192,20 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
             </div>
           </div>
 
-          {/* Quick One-Click Demo Accounts for Evaluation */}
+          {/* Quick One-Click Account ID Selector */}
           <div className="relative z-10 mt-8 pt-6 border-t border-white/15">
-            <div className="text-xs font-bold uppercase tracking-wider text-blue-200 mb-2.5">
-              Akun Demo Cepat (Klik untuk Isi Otomatis):
+            <div className="text-xs font-bold uppercase tracking-wider text-blue-200 mb-1.5">
+              Pilih ID Akun Cepat (Isi NIK Otomatis):
             </div>
+            <p className="text-[11px] text-blue-200/80 mb-2.5">
+              Kata sandi awal dikonfigurasi melalui variabel lingkungan server{" "}
+              <code className="text-white">INITIAL_*_PASSWORD</code> (atau log
+              konsol saat mode pengembangan lokal).
+            </p>
             <div className="grid grid-cols-2 gap-2 text-left">
               <button
                 type="button"
-                onClick={() => fillQuickDemo("WS-001", "AdminCare2026!")}
+                onClick={() => fillQuickDemo("WS-001")}
                 className="bg-white/10 hover:bg-white/20 transition rounded-xl p-2.5 border border-white/15 text-xs"
               >
                 <div className="font-bold text-white flex items-center justify-between">
@@ -217,7 +221,7 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
 
               <button
                 type="button"
-                onClick={() => fillQuickDemo("EMP-101", "Employee2026!")}
+                onClick={() => fillQuickDemo("EMP-101")}
                 className="bg-white/10 hover:bg-white/20 transition rounded-xl p-2.5 border border-white/15 text-xs"
               >
                 <div className="font-bold text-white flex items-center justify-between">
@@ -233,7 +237,7 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
 
               <button
                 type="button"
-                onClick={() => fillQuickDemo("DRV-201", "Driver2026!")}
+                onClick={() => fillQuickDemo("DRV-201")}
                 className="bg-white/10 hover:bg-white/20 transition rounded-xl p-2.5 border border-white/15 text-xs"
               >
                 <div className="font-bold text-white flex items-center justify-between">
@@ -249,7 +253,7 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
 
               <button
                 type="button"
-                onClick={() => fillQuickDemo("EMP-103", "Employee2026!")}
+                onClick={() => fillQuickDemo("EMP-103")}
                 className="bg-amber-500/20 hover:bg-amber-500/30 transition rounded-xl p-2.5 border border-amber-300/30 text-xs"
               >
                 <div className="font-bold text-amber-200 flex items-center justify-between">

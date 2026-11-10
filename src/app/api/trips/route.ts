@@ -3,10 +3,10 @@ import { isWorkplaceAdmin } from "@/lib/auth";
 import { getActiveServerUser } from "@/lib/server-guard";
 import {
   appendAuditLog,
-  getDb,
+  loadDbAsync,
   notifyAllWorkplaceAdmins,
   pushNotification,
-  saveDb,
+  saveDbAsync,
 } from "@/lib/store";
 import {
   sanitizeText,
@@ -23,7 +23,32 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const action = String(body.action || "");
-    const db = getDb();
+    const db = await loadDbAsync();
+
+    const targetBookingId = String(body.bookingId || "");
+    const targetBooking = db.bookings.find((b) => b.id === targetBookingId);
+    if (!targetBooking) {
+      return NextResponse.json(
+        { error: "Data perjalanan / booking tidak ditemukan." },
+        { status: 404 }
+      );
+    }
+
+    // Verify caller is the assigned Driver for this booking or a Workplace Solution Admin
+    const assignedDriver = db.drivers.find(
+      (dr) => dr.id === targetBooking.driverId
+    );
+    const isAssignedDriver =
+      assignedDriver && assignedDriver.userId === auth.user.id;
+    if (!isAssignedDriver && !isWorkplaceAdmin(auth.user.role)) {
+      return NextResponse.json(
+        {
+          error:
+            "Akses ditolak. Hanya Driver yang ditugaskan pada perjalanan ini atau Workplace Solution Admin yang dapat melakukan aksi perjalanan.",
+        },
+        { status: 403 }
+      );
+    }
 
     // 1. TRIP CHECK-OUT (FR-026, FR-028, FR-033, FR-035)
     if (action === "CHECKOUT") {
@@ -57,13 +82,7 @@ export async function POST(request: Request) {
       }
 
       const d = parsed.data;
-      const booking = db.bookings.find((b) => b.id === d.bookingId);
-      if (!booking) {
-        return NextResponse.json(
-          { error: "Data booking tidak ditemukan." },
-          { status: 404 }
-        );
-      }
+      const booking = targetBooking;
 
       if (booking.status !== "CONFIRMED") {
         return NextResponse.json(
@@ -85,7 +104,6 @@ export async function POST(request: Request) {
         );
       }
 
-      // Resolve actual users from employee directory (FR-028)
       const actualUsersFormatted: string[] = [];
       for (const uid of d.actualUserIds) {
         const emp = db.users.find((u) => u.id === uid);
@@ -160,10 +178,9 @@ export async function POST(request: Request) {
         vehicle.updatedAt = nowIso;
       }
 
-      const drv = db.drivers.find((dr) => dr.id === booking.driverId);
-      if (drv) drv.status = "ON_TRIP";
+      if (assignedDriver) assignedDriver.status = "ON_TRIP";
 
-      saveDb(db);
+      await saveDbAsync(db);
 
       appendAuditLog({
         actorId: auth.user.id,
@@ -189,8 +206,8 @@ export async function POST(request: Request) {
 
     // 2. LIVE GPS PING (FR-033, FR-034: only allowed between check-out and check-in)
     if (action === "GPS_PING") {
-      const booking = db.bookings.find((b) => b.id === body.bookingId);
-      if (!booking || booking.status !== "IN_PROGRESS" || !booking.trip) {
+      const booking = targetBooking;
+      if (booking.status !== "IN_PROGRESS" || !booking.trip) {
         return NextResponse.json(
           {
             error:
@@ -205,7 +222,7 @@ export async function POST(request: Request) {
       const label = sanitizeText(String(body.label || "Live Route Point"));
       const speedKmh = Number(body.speedKmh || 45);
 
-      if (isNaN(lat) || isNaN(lng)) {
+      if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
         return NextResponse.json(
           { error: "Koordinat GPS tidak valid." },
           { status: 400 }
@@ -225,7 +242,7 @@ export async function POST(request: Request) {
       booking.trip.gpsPoints.push(point);
       booking.trip.gpsLostFlag = false;
       booking.updatedAt = point.recordedAt;
-      saveDb(db);
+      await saveDbAsync(db);
 
       return NextResponse.json({
         booking,
@@ -236,8 +253,8 @@ export async function POST(request: Request) {
 
     // 3. ADD INCIDENT NOTE (FR-032)
     if (action === "INCIDENT_NOTE") {
-      const booking = db.bookings.find((b) => b.id === body.bookingId);
-      if (!booking || !booking.trip) {
+      const booking = targetBooking;
+      if (!booking.trip) {
         return NextResponse.json(
           { error: "Data perjalanan tidak ditemukan." },
           { status: 404 }
@@ -247,7 +264,7 @@ export async function POST(request: Request) {
       const note = sanitizeText(String(body.incidentNote || ""));
       booking.trip.incidentNote = note;
       booking.updatedAt = new Date().toISOString();
-      saveDb(db);
+      await saveDbAsync(db);
 
       notifyAllWorkplaceAdmins({
         event: "TRIP_INCIDENT_NOTE",
@@ -283,8 +300,8 @@ export async function POST(request: Request) {
       }
 
       const d = parsed.data;
-      const booking = db.bookings.find((b) => b.id === d.bookingId);
-      if (!booking || booking.status !== "IN_PROGRESS" || !booking.trip) {
+      const booking = targetBooking;
+      if (booking.status !== "IN_PROGRESS" || !booking.trip) {
         return NextResponse.json(
           {
             error:
@@ -345,7 +362,6 @@ export async function POST(request: Request) {
         at: nowIso,
       });
 
-      // FR-019 & FR-027: Update vehicle odometer & return status to AVAILABLE
       const vehicle = db.vehicles.find((v) => v.id === booking.vehicleId);
       if (vehicle) {
         vehicle.odometerKm = d.odoEnd;
@@ -355,12 +371,10 @@ export async function POST(request: Request) {
         vehicle.updatedAt = nowIso;
       }
 
-      const drv = db.drivers.find((dr) => dr.id === booking.driverId);
-      if (drv) drv.status = "AVAILABLE";
+      if (assignedDriver) assignedDriver.status = "AVAILABLE";
 
-      saveDb(db);
+      await saveDbAsync(db);
 
-      // FR-029: Flag Workplace Solution if charge/fuel below minimum 30%
       if (isLowChargeOrFuel && vehicle) {
         notifyAllWorkplaceAdmins({
           event: "LOW_CHARGE_FUEL_CHECKIN",
