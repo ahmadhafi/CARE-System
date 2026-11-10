@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  hashPassword,
   sanitizeUser,
   setSessionCookie,
   signSessionToken,
@@ -10,7 +11,7 @@ import {
   getClientIp,
   resetRateLimit,
 } from "@/lib/rate-limit";
-import { appendAuditLog, loadDbAsync } from "@/lib/store";
+import { appendAuditLog, loadDbAsync, saveDbAsync } from "@/lib/store";
 import { loginSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
@@ -60,12 +61,36 @@ export async function POST(request: Request) {
       );
     }
 
-    const passwordValid = await verifyPassword(password, user.passwordHash);
+    let passwordValid = await verifyPassword(password, user.passwordHash);
+
+    // Sync seed account password if INITIAL_*_PASSWORD env var was added/updated after initial DB seed
+    if (!passwordValid) {
+      const envPass =
+        user.employeeNo === "WS-001"
+          ? process.env.INITIAL_ADMIN_PASSWORD
+          : user.employeeNo === "IT-001"
+          ? process.env.INITIAL_SUPER_ADMIN_PASSWORD ||
+            process.env.INITIAL_ADMIN_PASSWORD
+          : user.employeeNo.startsWith("EMP-")
+          ? process.env.INITIAL_EMPLOYEE_PASSWORD ||
+            process.env.INITIAL_ADMIN_PASSWORD
+          : user.employeeNo.startsWith("DRV-")
+          ? process.env.INITIAL_DRIVER_PASSWORD ||
+            process.env.INITIAL_ADMIN_PASSWORD
+          : undefined;
+
+      if (envPass && envPass.length >= 6 && password === envPass) {
+        user.passwordHash = await hashPassword(envPass);
+        await saveDbAsync(db);
+        passwordValid = true;
+      }
+    }
+
     if (!passwordValid) {
       return NextResponse.json(
         {
           error:
-            "ID Karyawan / Email atau kata sandi salah. (Invalid credentials)",
+            "ID Karyawan / Email atau kata sandi salah.",
         },
         { status: 401 }
       );

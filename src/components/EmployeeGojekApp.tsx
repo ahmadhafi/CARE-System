@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import {
   Car,
   Zap,
-  Fuel,
   MapPin,
   Calendar,
   Users,
@@ -12,15 +11,15 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  XCircle,
   MessageSquare,
   Bell,
   Send,
   Edit3,
   ArrowRight,
-  Sparkles,
-  Shield,
   PhoneCall,
+  Minus,
+  Plus,
+  Route,
 } from "lucide-react";
 import {
   Booking,
@@ -54,7 +53,6 @@ export default function EmployeeGojekApp({
     "BOOK_CAR" | "MY_BOOKINGS" | "WHATSAPP_BOT" | "NOTIFICATIONS"
   >("BOOK_CAR");
 
-  // Default start time: +3 hours from now, end time: +6 hours
   const defaultStart = new Date(Date.now() + 3 * 3600_000)
     .toISOString()
     .slice(0, 16);
@@ -67,7 +65,7 @@ export default function EmployeeGojekApp({
     activeCarTypes[0]?.id || ""
   );
   const [pickupLocation, setPickupLocation] = useState(
-    "Samsung One Tower Lobby Utama, Sudirman"
+    "Lobby Utama Kantor Pusat"
   );
   const [destination, setDestination] = useState("");
   const [purpose, setPurpose] = useState("");
@@ -83,15 +81,13 @@ export default function EmployeeGojekApp({
     { startAt: string; endAt: string; label: string }[]
   >([]);
 
-  // Edit modal state (FR-005)
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [editDest, setEditDest] = useState("");
   const [editPurpose, setEditPurpose] = useState("");
   const [editPax, setEditPax] = useState(2);
   const [editDist, setEditDist] = useState(30);
 
-  // WhatsApp Bot Simulator state (FR-039 to FR-045)
-  const [waPhone, setWaPhone] = useState(user.phone || "0812800101");
+  const [waPhone] = useState(user.phone || "0812800101");
   const [waInput, setWaInput] = useState("");
   const [waMessages, setWaMessages] = useState<
     { id: string; sender: "USER" | "BOT"; text: string; at: string }[]
@@ -99,7 +95,7 @@ export default function EmployeeGojekApp({
     {
       id: "init-1",
       sender: "BOT",
-      text: `Halo ${user.name} 👋\nSelamat datang di Layanan WhatsApp CARE Workplace Solution.\nKetik *1* untuk Pesan Mobil, *2* untuk Lihat Booking Saya, atau *3* untuk Batalkan Booking.`,
+      text: `Halo ${user.name.split(" ")[0]} 👋\nKetik *1* Pesan Mobil, *2* Cek Pesanan, atau *3* Batalkan.`,
       at: new Date().toISOString(),
     },
   ]);
@@ -108,13 +104,22 @@ export default function EmployeeGojekApp({
   const selectedCarType =
     activeCarTypes.find((c) => c.id === selectedCarTypeId) || activeCarTypes[0];
 
-  // FR-006: Live EV range warning check with 1.2x buffer
   const requiredEvRange = Math.ceil(
     estDistanceKm * (settings?.evRangeBufferMultiplier || 1.2)
   );
   const showEvRangeWarning =
     selectedCarType?.powertrain === "EV" &&
     requiredEvRange > (selectedCarType?.defaultRangeKm || 350);
+
+  const availableUnitsCount = vehicles.filter(
+    (v) => v.status === "AVAILABLE"
+  ).length;
+  const activeOrdersCount = bookings.filter(
+    (b) =>
+      b.status === "PENDING_APPROVAL" ||
+      b.status === "CONFIRMED" ||
+      b.status === "IN_PROGRESS"
+  ).length;
 
   async function handleCreateBooking(e: React.FormEvent) {
     e.preventDefault();
@@ -147,15 +152,12 @@ export default function EmployeeGojekApp({
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.error || "Gagal mengirim permintaan pemesanan.");
+        setErrorMsg(data.error || "Gagal memproses pesanan.");
         if (Array.isArray(data.alternatives)) {
           setAlternatives(data.alternatives);
         }
       } else {
-        setSuccessMsg(
-          data.message ||
-            "Permintaan berhasil dikirim ke Workplace Solution Admin!"
-        );
+        setSuccessMsg("Pesanan terkirim ke Workplace Solution!");
         setDestination("");
         setPurpose("");
         onRefresh();
@@ -179,7 +181,7 @@ export default function EmployeeGojekApp({
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Gagal membatalkan booking.");
+        alert(data.error || "Gagal membatalkan pesanan.");
       } else {
         onRefresh();
       }
@@ -245,21 +247,21 @@ export default function EmployeeGojekApp({
 
   function renderStatusBadge(status: Booking["status"]) {
     const styles: Record<string, string> = {
-      PENDING_APPROVAL: "bg-amber-100 text-amber-800 border-amber-300",
-      CONFIRMED: "bg-blue-100 text-[#1428A0] border-blue-300",
-      IN_PROGRESS: "bg-emerald-100 text-emerald-800 border-emerald-300",
-      COMPLETED: "bg-slate-100 text-slate-700 border-slate-300",
-      REJECTED: "bg-rose-100 text-rose-800 border-rose-300",
-      REVISION_NEEDED: "bg-orange-100 text-orange-800 border-orange-300",
-      CANCELLED: "bg-slate-100 text-slate-500 border-slate-200",
-      EXPIRED: "bg-slate-100 text-slate-500 border-slate-200",
-      NO_SHOW: "bg-rose-100 text-rose-800 border-rose-300",
+      PENDING_APPROVAL: "bg-amber-50 text-amber-700 border-amber-200",
+      CONFIRMED: "bg-[#EEF4FF] text-[#1428A0] border-blue-200",
+      IN_PROGRESS: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      COMPLETED: "bg-slate-100 text-slate-600 border-slate-200",
+      REJECTED: "bg-rose-50 text-rose-700 border-rose-200",
+      REVISION_NEEDED: "bg-orange-50 text-orange-700 border-orange-200",
+      CANCELLED: "bg-slate-100 text-slate-400 border-slate-200",
+      EXPIRED: "bg-slate-100 text-slate-400 border-slate-200",
+      NO_SHOW: "bg-rose-50 text-rose-700 border-rose-200",
     };
 
     const labels: Record<string, string> = {
-      PENDING_APPROVAL: "Menunggu Workplace Solution",
-      CONFIRMED: "Disetujui • Unit Siap",
-      IN_PROGRESS: "Perjalanan Aktif (GPS ON)",
+      PENDING_APPROVAL: "Menunggu WS",
+      CONFIRMED: "Disetujui",
+      IN_PROGRESS: "Dalam Perjalanan",
       COMPLETED: "Selesai",
       REJECTED: "Ditolak",
       REVISION_NEEDED: "Perlu Revisi",
@@ -270,7 +272,7 @@ export default function EmployeeGojekApp({
 
     return (
       <span
-        className={`px-3 py-1 rounded-full text-xs font-bold border ${
+        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
           styles[status] || "bg-slate-100 text-slate-700"
         }`}
       >
@@ -279,778 +281,675 @@ export default function EmployeeGojekApp({
     );
   }
 
+  const navItems = [
+    { id: "BOOK_CAR", label: "CareCar", icon: Car, badge: 0 },
+    {
+      id: "MY_BOOKINGS",
+      label: "Pesanan",
+      icon: Calendar,
+      badge: activeOrdersCount,
+    },
+    { id: "WHATSAPP_BOT", label: "Chat WA", icon: MessageSquare, badge: 0 },
+    {
+      id: "NOTIFICATIONS",
+      label: "Kotak Masuk",
+      icon: Bell,
+      badge: notifications.length,
+    },
+  ] as const;
+
   return (
-    <div className="space-y-6">
-      {/* Gojek-Inspired Hero & Quick ServiceLauncher in Samsung One UI Blue */}
-      <div className="bg-gradient-to-r from-[#1428A0] via-[#0F2499] to-[#0066FF] rounded-[28px] p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div>
-            <div className="inline-flex items-center gap-2 bg-white/15 px-3.5 py-1 rounded-full text-xs font-bold mb-3 border border-white/20">
-              <Sparkles className="w-3.5 h-3.5 text-[#00C3FF]" />
-              <span>CareCar by Workplace Solution</span>
-            </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Mau perjalanan dinas ke mana, {user.name.split(" ")[0]}?
-            </h2>
-            <p className="text-blue-100 text-sm mt-1">
-              Pilih tipe mobil operasional ala GoCar dengan standar kenyamanan &
-              keamanan <strong>Workplace Solution</strong>.
-            </p>
+    <div className="max-w-3xl mx-auto space-y-4">
+      {/* Gojek-Style Compact Wallet/Status Card */}
+      <div className="bg-[#1428A0] rounded-3xl p-4 sm:p-5 text-white shadow-sm flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs text-blue-200 font-medium">
+            {user.department}
           </div>
+          <h2 className="text-base sm:text-lg font-extrabold truncate">
+            Halo, {user.name.split(" ")[0]}
+          </h2>
+        </div>
 
-          {/* Gojek-Style Pill Service Navigation */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab("BOOK_CAR")}
-              className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all ${
-                activeTab === "BOOK_CAR"
-                  ? "bg-white text-[#1428A0] border-white shadow-lg font-extrabold"
-                  : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-              }`}
-            >
-              <Car className="w-6 h-6 mb-1" />
-              <span className="text-xs">Pesan CareCar</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("MY_BOOKINGS")}
-              className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all relative ${
-                activeTab === "MY_BOOKINGS"
-                  ? "bg-white text-[#1428A0] border-white shadow-lg font-extrabold"
-                  : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-              }`}
-            >
-              <Calendar className="w-6 h-6 mb-1" />
-              <span className="text-xs">Booking Saya ({bookings.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("WHATSAPP_BOT")}
-              className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all ${
-                activeTab === "WHATSAPP_BOT"
-                  ? "bg-white text-[#1428A0] border-white shadow-lg font-extrabold"
-                  : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-              }`}
-            >
-              <MessageSquare className="w-6 h-6 mb-1" />
-              <span className="text-xs">WhatsApp Bot</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("NOTIFICATIONS")}
-              className={`flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all relative ${
-                activeTab === "NOTIFICATIONS"
-                  ? "bg-white text-[#1428A0] border-white shadow-lg font-extrabold"
-                  : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-              }`}
-            >
-              <Bell className="w-6 h-6 mb-1" />
-              <span className="text-xs">
-                Notifikasi ({notifications.length})
-              </span>
-            </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl px-3 py-2 text-center border border-white/10">
+            <div className="text-xs font-extrabold text-[#00C3FF]">
+              {availableUnitsCount} Unit
+            </div>
+            <div className="text-[10px] text-blue-100">Tersedia</div>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl px-3 py-2 text-center border border-white/10">
+            <div className="text-xs font-extrabold text-white">
+              {activeOrdersCount}
+            </div>
+            <div className="text-[10px] text-blue-100">Pesanan Aktif</div>
           </div>
         </div>
       </div>
 
-      {/* TAB 1: GOJEK-STYLE CAR BOOKING FLOW */}
-      {activeTab === "BOOK_CAR" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Pickup, Destination & Trip Details */}
-          <div className="lg:col-span-7 bg-white rounded-[28px] p-6 md:p-8 shadow-sm border border-slate-200/80">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900">
-                  1. Detail Rute & Waktu Perjalanan Dinas
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Semua permintaan diverifikasi oleh Workplace Solution Admin
-                  (Target SLA: {settings.approvalSlaHours} jam kerja)
-                </p>
+      {/* Gojek 4-Service Icon Launcher (Desktop & Mobile Top Strip) */}
+      <div className="bg-white rounded-3xl p-3 shadow-[0_2px_12px_rgba(15,23,42,0.04)] border border-slate-100 grid grid-cols-4 gap-2">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const active = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveTab(item.id)}
+              className={`flex flex-col items-center justify-center py-2.5 px-1 rounded-2xl transition relative ${
+                active
+                  ? "bg-[#EEF4FF] text-[#1428A0]"
+                  : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-1 transition ${
+                  active
+                    ? "bg-[#1428A0] text-white shadow-sm"
+                    : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
               </div>
-              <span className="bg-[#E8F0FE] text-[#1428A0] text-xs font-bold px-3.5 py-1.5 rounded-full">
-                Min. Notice {settings.minBookingNoticeHours} Jam
+              <span className="text-[11px] font-bold tracking-tight">
+                {item.label}
               </span>
+              {item.badge > 0 && (
+                <span className="absolute top-1.5 right-3 sm:right-6 bg-[#0066FF] text-white text-[10px] font-extrabold min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center">
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* =====================================================================
+          TAB 1: GOJEK GOCAR RIDE BOOKING UI
+         ===================================================================== */}
+      {activeTab === "BOOK_CAR" && (
+        <form
+          id="carecar-booking-form"
+          onSubmit={handleCreateBooking}
+          className="space-y-4"
+        >
+          {/* Visual Map & Floating Route Card (Gojek GoCar Style) */}
+          <div className="bg-white rounded-3xl shadow-[0_2px_12px_rgba(15,23,42,0.04)] border border-slate-100 overflow-hidden">
+            {/* Clean Stylized Route Map Header */}
+            <div className="bg-gradient-to-br from-[#EEF4FF] via-[#E2ECFF] to-[#F5F7FB] px-5 py-4 relative border-b border-slate-100">
+              <div className="flex items-center justify-between text-xs font-bold text-[#1428A0]">
+                <div className="flex items-center gap-1.5">
+                  <Route className="w-4 h-4 text-[#0066FF]" />
+                  <span className="truncate max-w-[160px] sm:max-w-[240px]">
+                    {pickupLocation || "Titik Jemput"}
+                  </span>
+                </div>
+                <div className="flex-1 border-t-2 border-dashed border-[#0066FF]/40 mx-3 relative">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-white text-[#1428A0] text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm border border-blue-100 whitespace-nowrap">
+                    {estDistanceKm} km
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
+                  <span className="truncate max-w-[120px] sm:max-w-[200px]">
+                    {destination || "Pilih Tujuan"}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {errorMsg && (
-              <div className="mb-5 bg-rose-50 border border-rose-200 text-rose-900 rounded-2xl p-4 text-sm">
-                <div className="flex items-start gap-2.5">
-                  <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                  <div>
-                    <div className="font-bold">Permintaan Ditolak Sistem</div>
-                    <div className="text-xs mt-1">{errorMsg}</div>
+            {/* Pickup & Destination Input Box */}
+            <div className="p-4 sm:p-5 space-y-3">
+              {errorMsg && (
+                <div className="bg-rose-50 border border-rose-200/80 text-rose-800 rounded-2xl p-3.5 text-xs">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                    <span className="font-semibold">{errorMsg}</span>
                   </div>
-                </div>
 
-                {/* FR-002: Up to 3 Alternative Time Slots */}
-                {alternatives.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-rose-200">
-                    <div className="text-xs font-bold text-rose-900 mb-2">
-                      Rekomendasi 3 Slot Waktu Alternatif yang Tersedia (Klik
-                      untuk Pilih):
+                  {alternatives.length > 0 && (
+                    <div className="mt-2.5 pt-2.5 border-t border-rose-200/80">
+                      <div className="text-[11px] font-bold mb-1.5">
+                        Jadwal alternatif tersedia:
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {alternatives.map((alt, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              setStartAt(alt.startAt.slice(0, 16));
+                              setEndAt(alt.endAt.slice(0, 16));
+                              setErrorMsg(null);
+                              setAlternatives([]);
+                            }}
+                            className="bg-white hover:bg-rose-100 text-rose-900 border border-rose-300 px-2.5 py-1 rounded-full text-[11px] font-bold transition"
+                          >
+                            {alt.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {alternatives.map((alt, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => {
-                            setStartAt(alt.startAt.slice(0, 16));
-                            setEndAt(alt.endAt.slice(0, 16));
-                            setErrorMsg(null);
-                            setAlternatives([]);
-                          }}
-                          className="bg-white hover:bg-rose-100 text-rose-900 border border-rose-300 px-3 py-1.5 rounded-full text-xs font-bold transition"
-                        >
-                          {alt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {successMsg && (
-              <div className="mb-5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl p-4 flex items-start gap-3 text-sm">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                <div>
-                  <div className="font-bold">Berhasil Diajukan!</div>
-                  <div className="text-xs mt-0.5">{successMsg}</div>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
 
-            <form
-              id="carecar-booking-form"
-              onSubmit={handleCreateBooking}
-              className="space-y-4"
-            >
-              {/* Gojek-style Route Box */}
-              <div className="bg-[#F4F6FA] rounded-2xl p-4 border border-slate-200/80 space-y-3">
+              {successMsg && (
+                <div className="bg-emerald-50 border border-emerald-200/80 text-emerald-800 rounded-2xl p-3.5 flex items-center gap-2.5 text-xs font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
+              {/* Gojek Dual Location Box */}
+              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/70 space-y-2.5">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#0066FF] text-white flex items-center justify-center shrink-0">
-                    <Navigation className="w-4 h-4" />
+                  <div className="w-6 h-6 rounded-full bg-[#0066FF] text-white flex items-center justify-center shrink-0">
+                    <div className="w-2 h-2 rounded-full bg-white" />
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Titik Penjemputan (Pickup)
-                    </label>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      Lokasi Jemput
+                    </div>
                     <input
                       type="text"
                       required
                       value={pickupLocation}
                       onChange={(e) => setPickupLocation(e.target.value)}
-                      className="w-full bg-transparent text-sm font-bold text-slate-900 focus:outline-none"
+                      className="w-full bg-transparent text-xs sm:text-sm font-bold text-slate-900 focus:outline-none"
                     />
                   </div>
                 </div>
 
-                <div className="border-t border-dashed border-slate-300 my-1" />
+                <div className="border-t border-slate-200/80 ml-9" />
 
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#1428A0] text-white flex items-center justify-center shrink-0">
-                    <MapPin className="w-4 h-4" />
+                  <div className="w-6 h-6 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0">
+                    <MapPin className="w-3.5 h-3.5" />
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                      Tujuan Perjalanan Dinas (Destination) *
-                    </label>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      Tujuan
+                    </div>
                     <input
                       type="text"
                       required
                       value={destination}
                       onChange={(e) => setDestination(e.target.value)}
-                      placeholder="Contoh: Pacific Place SCBD / Kawasan Industri Cikarang"
-                      className="w-full bg-transparent text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                      placeholder="Mau ke mana hari ini?"
+                      className="w-full bg-transparent text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Waktu Berangkat (Start) *
+              {/* Compact Schedule & Passengers Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="bg-slate-50 rounded-2xl px-3.5 py-2.5 border border-slate-200/70">
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">
+                    Waktu Berangkat
                   </label>
                   <input
                     type="datetime-local"
                     required
                     value={startAt}
                     onChange={(e) => setStartAt(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#F4F6FA] border border-slate-200 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
+                    className="w-full bg-transparent text-xs font-bold text-slate-900 focus:outline-none"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Estimasi Kembali (Return) *
+                <div className="bg-slate-50 rounded-2xl px-3.5 py-2.5 border border-slate-200/70">
+                  <label className="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">
+                    Waktu Kembali
                   </label>
                   <input
                     type="datetime-local"
                     required
                     value={endAt}
                     onChange={(e) => setEndAt(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#F4F6FA] border border-slate-200 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
+                    className="w-full bg-transparent text-xs font-bold text-slate-900 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Jumlah Penumpang (Orang) *
+              {/* Stepper for Passengers + Distance + Purpose */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="bg-slate-50 rounded-2xl px-3.5 py-2.5 border border-slate-200/70 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-slate-400">
+                      Penumpang
+                    </div>
+                    <div className="text-xs font-extrabold text-slate-900">
+                      {passengers} Orang
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPassengers((p) => Math.max(1, p - 1))}
+                      className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPassengers((p) => Math.min(12, p + 1))}
+                      className="w-7 h-7 rounded-full bg-[#1428A0] text-white flex items-center justify-center hover:bg-[#0066FF]"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 rounded-2xl px-3.5 py-2.5 border border-slate-200/70">
+                  <label className="block text-[10px] font-bold uppercase text-slate-400">
+                    Estimasi Jarak (PP)
                   </label>
-                  <div className="relative">
-                    <Users className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                  <div className="flex items-center gap-1 mt-0.5">
                     <input
                       type="number"
                       min={1}
-                      max={12}
+                      max={1500}
                       required
-                      value={passengers}
-                      onChange={(e) => setPassengers(Number(e.target.value))}
-                      className="w-full pl-11 pr-4 py-3 bg-[#F4F6FA] border border-slate-200 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
+                      value={estDistanceKm}
+                      onChange={(e) => setEstDistanceKm(Number(e.target.value))}
+                      className="w-full bg-transparent text-xs font-extrabold text-slate-900 focus:outline-none"
                     />
+                    <span className="text-xs font-bold text-slate-400">km</span>
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Estimasi Jarak Pulang-Pergi (KM) *
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={1500}
-                    required
-                    value={estDistanceKm}
-                    onChange={(e) => setEstDistanceKm(Number(e.target.value))}
-                    className="w-full px-4 py-3 bg-[#F4F6FA] border border-slate-200 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
-                  />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Keperluan Perjalanan Dinas (Purpose) *
+              <div className="bg-slate-50 rounded-2xl px-3.5 py-2.5 border border-slate-200/70">
+                <label className="block text-[10px] font-bold uppercase text-slate-400 mb-0.5">
+                  Keperluan Dinas
                 </label>
-                <textarea
-                  rows={2}
+                <input
+                  type="text"
                   required
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
-                  placeholder="Jelaskan agenda rapat, nama klien/instansi yang dikunjungi..."
-                  className="w-full px-4 py-3 bg-[#F4F6FA] border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
+                  placeholder="Contoh: Meeting Klien SCBD / Kunjungan Pabrik"
+                  className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none"
                 />
               </div>
 
-              {/* FR-006: EV Range Warning */}
               {showEvRangeWarning && (
-                <div className="bg-amber-50 border border-amber-300 text-amber-900 rounded-2xl p-4 flex items-start gap-3 text-xs">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="block text-sm">
-                      Peringatan Jarak Tempuh EV (FR-006 / BR-08)
-                    </strong>
-                    Estimasi jarak Anda ({estDistanceKm} km × buffer 1.2 ={" "}
-                    <strong>{requiredEvRange} km</strong>) melebihi jarak pakai
-                    aman baterai penuh EV ({selectedCarType?.defaultRangeKm} km).
-                    Anda tetap dapat mengirim permintaan, namun kami sarankan
-                    memilih tipe <strong>CareCar XL MPV (Petrol)</strong>.
-                  </div>
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-3 flex items-center gap-2.5 text-xs">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>
+                    Jarak {estDistanceKm} km mendekati batas baterai EV (~
+                    {selectedCarType?.defaultRangeKm} km). Disarankan memilih{" "}
+                    <strong>MPV Petrol</strong>.
+                  </span>
                 </div>
               )}
-            </form>
+            </div>
           </div>
 
-          {/* Right Column: Gojek-Style Car Type Selector & Order Button */}
-          <div className="lg:col-span-5 flex flex-col justify-between bg-white rounded-[28px] p-6 md:p-8 shadow-sm border border-slate-200/80">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-extrabold text-slate-900">
-                    2. Pilih Tipe CareCar
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Opsi tipe mobil dikelola secara dinamis oleh Workplace
-                    Solution
-                  </p>
-                </div>
-                <span className="text-xs font-bold text-[#0066FF]">
-                  {
-                    vehicles.filter((v) => v.status === "AVAILABLE").length
-                  }{" "}
-                  Unit Ready
-                </span>
-              </div>
+          {/* Gojek Bottom-Sheet Style Car Type Selector */}
+          <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(15,23,42,0.04)] border border-slate-100 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-slate-900">
+                Pilih Tipe Kendaraan
+              </h3>
+              <span className="text-[11px] font-bold text-[#0066FF]">
+                {availableUnitsCount} Unit Siap Jalan
+              </span>
+            </div>
 
-              {/* Gojek-Style Selectable Vehicle Cards */}
-              <div className="space-y-3">
-                {activeCarTypes.map((ct) => {
-                  const isSelected = selectedCarType?.id === ct.id;
-                  const matchingVehicles = vehicles.filter(
-                    (v) => v.carTypeId === ct.id
-                  );
-                  const availableCount = matchingVehicles.filter(
-                    (v) => v.status === "AVAILABLE"
-                  ).length;
-                  const seatsTooSmall = passengers > ct.seats;
+            <div className="space-y-2">
+              {activeCarTypes.map((ct) => {
+                const isSelected = selectedCarType?.id === ct.id;
+                const matchingVehicles = vehicles.filter(
+                  (v) => v.carTypeId === ct.id
+                );
+                const availableCount = matchingVehicles.filter(
+                  (v) => v.status === "AVAILABLE"
+                ).length;
+                const seatsTooSmall = passengers > ct.seats;
 
-                  return (
-                    <button
-                      key={ct.id}
-                      type="button"
-                      onClick={() => setSelectedCarTypeId(ct.id)}
-                      className={`w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center justify-between gap-4 ${
-                        isSelected
-                          ? "border-[#0066FF] bg-[#E8F0FE]/60 shadow-md shadow-blue-900/5"
-                          : "border-slate-200 hover:border-blue-300 bg-white"
-                      } ${seatsTooSmall ? "opacity-60" : ""}`}
-                    >
-                      <div className="flex items-center gap-3.5">
-                        <div
-                          className={`w-13 h-13 rounded-2xl flex items-center justify-center shrink-0 p-3 ${
-                            ct.powertrain === "EV"
-                              ? "bg-gradient-to-br from-[#1428A0] to-[#00C3FF] text-white"
-                              : "bg-gradient-to-br from-[#1428A0] to-[#0066FF] text-white"
-                          }`}
-                        >
-                          {ct.powertrain === "EV" ? (
-                            <Zap className="w-6 h-6" />
-                          ) : (
-                            <Car className="w-6 h-6" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-sm text-slate-900">
-                              {ct.name}
-                            </span>
-                            <span
-                              className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                                ct.powertrain === "EV"
-                                  ? "bg-cyan-100 text-cyan-900"
-                                  : "bg-blue-100 text-[#1428A0]"
-                              }`}
-                            >
-                              {ct.badgeText}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
-                            {ct.description}
-                          </p>
-                          <div className="flex items-center gap-3 mt-1.5 text-[11px] font-bold text-slate-600">
-                            <span>Maks. {ct.seats} Penumpang</span>
-                            <span>•</span>
-                            <span>Range ~{ct.defaultRangeKm} KM</span>
-                            <span>•</span>
-                            <span
-                              className={
-                                availableCount > 0
-                                  ? "text-emerald-700"
-                                  : "text-amber-700"
-                              }
-                            >
-                              {availableCount} Unit Tersedia
-                            </span>
-                          </div>
-                        </div>
+                return (
+                  <button
+                    key={ct.id}
+                    type="button"
+                    onClick={() => setSelectedCarTypeId(ct.id)}
+                    className={`w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 ${
+                      isSelected
+                        ? "border-[#0066FF] bg-[#EEF4FF]/60"
+                        : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
+                    } ${seatsTooSmall ? "opacity-55" : ""}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+                          ct.powertrain === "EV"
+                            ? "bg-[#1428A0] text-[#00C3FF]"
+                            : "bg-[#0066FF] text-white"
+                        }`}
+                      >
+                        {ct.powertrain === "EV" ? (
+                          <Zap className="w-5 h-5" />
+                        ) : (
+                          <Car className="w-5 h-5" />
+                        )}
                       </div>
 
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-extrabold text-xs sm:text-sm text-slate-900 truncate">
+                            {ct.name}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 shrink-0">
+                            <Users className="w-3 h-3 inline mr-0.5 -mt-0.5" />
+                            {ct.seats}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                          <span>{ct.powertrain}</span>
+                          <span>•</span>
+                          <span>Range {ct.defaultRangeKm} km</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span
+                        className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full ${
+                          availableCount > 0
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-amber-50 text-amber-700"
+                        }`}
+                      >
+                        {availableCount} Ready
+                      </span>
                       <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                           isSelected
                             ? "border-[#0066FF] bg-[#0066FF] text-white"
                             : "border-slate-300"
                         }`}
                       >
-                        {isSelected && <CheckCircle2 className="w-4 h-4" />}
+                        {isSelected && <CheckCircle2 className="w-3.5 h-3.5" />}
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Bottom Gojek-style Sticky Action Bar */}
-            <div className="mt-6 pt-5 border-t border-slate-200">
-              <div className="flex items-center justify-between text-xs text-slate-600 mb-3">
-                <span>Pilihan Armada:</span>
-                <span className="font-extrabold text-[#1428A0]">
-                  {selectedCarType?.name || "Semua Tipe"}
-                </span>
-              </div>
-
+            {/* Sticky-like Order Button */}
+            <div className="pt-2">
               <button
                 type="submit"
-                form="carecar-booking-form"
                 disabled={submitting}
-                className="w-full py-4 px-6 rounded-full bg-gradient-to-r from-[#1428A0] to-[#0066FF] hover:from-[#0E1D7A] hover:to-[#0052CC] text-white font-extrabold text-sm shadow-xl shadow-blue-700/25 transition flex items-center justify-between"
+                className="w-full py-3.5 px-5 rounded-full bg-[#1428A0] hover:bg-[#0066FF] active:scale-[0.99] text-white font-extrabold text-sm shadow-lg shadow-blue-900/15 transition flex items-center justify-between disabled:opacity-50"
               >
                 <span className="flex items-center gap-2">
-                  <Car className="w-5 h-5" />
+                  <Car className="w-4 h-4" />
                   <span>
                     {submitting
-                      ? "Memproses Permintaan..."
-                      : "Pesan CareCar Sekarang"}
+                      ? "Memproses..."
+                      : `Pesan ${selectedCarType?.name || "CareCar"}`}
                   </span>
                 </span>
                 <span className="bg-white/20 px-3 py-1 rounded-full text-xs flex items-center gap-1">
-                  <span>Kirim ke WS</span>
+                  <span>Lanjut</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </span>
               </button>
             </div>
           </div>
-        </div>
+        </form>
       )}
 
-      {/* TAB 2: MY BOOKINGS (FR-004, FR-005, FR-025) */}
+      {/* =====================================================================
+          TAB 2: MY BOOKINGS
+         ===================================================================== */}
       {activeTab === "MY_BOOKINGS" && (
-        <div className="bg-white rounded-[28px] p-6 md:p-8 shadow-sm border border-slate-200/80">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-xl font-extrabold text-slate-900">
-                Riwayat & Status Pemesanan Saya (S-E2)
-              </h3>
-              <p className="text-xs text-slate-500">
-                Pantau persetujuan Workplace Solution, detail plat mobil, nomor
-                telepon driver, dan status perjalanan
-              </p>
-            </div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-base font-extrabold text-slate-900">
+              Pesanan Saya ({bookings.length})
+            </h3>
             <button
               type="button"
               onClick={() => setActiveTab("BOOK_CAR")}
-              className="px-5 py-2.5 rounded-full bg-[#1428A0] text-white text-xs font-bold hover:bg-[#0066FF] transition"
+              className="px-3.5 py-1.5 rounded-full bg-[#1428A0] text-white text-xs font-bold hover:bg-[#0066FF] transition"
             >
-              + Buat Booking Baru
+              + Pesan Baru
             </button>
           </div>
 
           {bookings.length === 0 ? (
-            <div className="text-center py-12 text-slate-500">
-              Belum ada pemesanan kendaraan operasional.
+            <div className="bg-white rounded-3xl p-10 text-center text-xs text-slate-400 border border-slate-100">
+              Belum ada riwayat pesanan.
             </div>
           ) : (
-            <div className="space-y-4">
-              {bookings.map((bk) => (
-                <div
-                  key={bk.id}
-                  className="rounded-2xl border border-slate-200 p-5 hover:border-blue-300 transition bg-[#F9FAFC]"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="font-extrabold text-sm text-[#1428A0] bg-[#E8F0FE] px-3 py-1 rounded-full">
-                        {bk.bookingNo}
-                      </span>
-                      {renderStatusBadge(bk.status)}
-                      <span className="text-xs font-semibold text-slate-500 bg-white px-2.5 py-1 rounded-full border border-slate-200">
-                        via {bk.channel}
-                      </span>
-                    </div>
-
-                    <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#0066FF]" />
-                      <span>
-                        {new Date(bk.startAt).toLocaleString("id-ID", {
-                          dateStyle: "medium",
-                          timeStyle: "short",
-                        })}{" "}
-                        –{" "}
-                        {new Date(bk.endAt).toLocaleTimeString("id-ID", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                    <div className="md:col-span-6 space-y-1">
-                      <div className="text-base font-extrabold text-slate-900">
-                        {bk.destination}
-                      </div>
-                      <div className="text-xs text-slate-600">
-                        <strong>Titik Jemput:</strong> {bk.pickupLocation} •{" "}
-                        <strong>Penumpang:</strong> {bk.passengers} orang •{" "}
-                        <strong>Jarak Est:</strong> {bk.estDistanceKm} km
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        <strong>Keperluan:</strong> {bk.purpose}
-                      </div>
-                      {bk.decisionNote && (
-                        <div className="text-xs bg-blue-50 text-[#1428A0] p-2.5 rounded-xl border border-blue-200 mt-2">
-                          <strong>Catatan Workplace Solution:</strong>{" "}
-                          {bk.decisionNote}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Assigned Vehicle & Driver Card */}
-                    <div className="md:col-span-4">
-                      {bk.vehiclePlate ? (
-                        <div className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm">
-                          <div className="text-[11px] font-bold uppercase text-[#0066FF]">
-                            Unit & Driver Ditugaskan
-                          </div>
-                          <div className="font-extrabold text-sm text-slate-900 mt-0.5">
-                            {bk.vehiclePlate} — {bk.vehicleModel}
-                          </div>
-                          <div className="text-xs text-slate-600 mt-1 flex items-center gap-1.5">
-                            <PhoneCall className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>
-                              {bk.driverName} ({bk.driverPhone})
-                            </span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="bg-amber-50/70 rounded-2xl p-3.5 border border-amber-200/80 text-xs text-amber-900">
-                          Menunggu penugasan unit kendaraan & driver oleh{" "}
-                          <strong>Workplace Solution Admin</strong>.
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Buttons (Edit FR-005 / Cancel FR-025) */}
-                    <div className="md:col-span-2 flex flex-col gap-2">
-                      {(bk.status === "PENDING_APPROVAL" ||
-                        bk.status === "REVISION_NEEDED") && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingBooking(bk);
-                            setEditDest(bk.destination);
-                            setEditPurpose(bk.purpose);
-                            setEditPax(bk.passengers);
-                            setEditDist(bk.estDistanceKm);
-                          }}
-                          className="w-full py-2 px-3 rounded-full bg-[#E8F0FE] hover:bg-blue-200 text-[#1428A0] font-bold text-xs flex items-center justify-center gap-1.5 transition"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>Edit / Revisi</span>
-                        </button>
-                      )}
-
-                      {(bk.status === "PENDING_APPROVAL" ||
-                        bk.status === "CONFIRMED" ||
-                        bk.status === "REVISION_NEEDED") && (
-                        <button
-                          type="button"
-                          onClick={() => handleCancelBooking(bk.id)}
-                          className="w-full py-2 px-3 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center justify-center gap-1.5 transition border border-rose-200"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Batalkan</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 3: WHATSAPP BOT CONVERSATIONAL SIMULATOR (PRD Section 6.7 & 8e) */}
-      {activeTab === "WHATSAPP_BOT" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-5 bg-white rounded-[28px] p-6 shadow-sm border border-slate-200">
-            <span className="bg-[#E8F0FE] text-[#1428A0] text-xs font-extrabold px-3 py-1 rounded-full">
-              PRD Section 6.7 & 8e
-            </span>
-            <h3 className="text-xl font-extrabold text-slate-900 mt-3">
-              Simulasi WhatsApp Bot Workplace Solution
-            </h3>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              Karyawan dengan ponsel spesifikasi rendah dapat memesan mobil
-              tanpa aplikasi melalui WhatsApp Bot resmi dalam Bahasa Indonesia.
-              Semua booking WhatsApp tetap masuk ke antrean{" "}
-              <strong>Workplace Solution Admin</strong> (FR-042).
-            </p>
-
-            <div className="mt-5 space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nomor WhatsApp Pengirim (FR-039)
-                </label>
-                <input
-                  type="text"
-                  value={waPhone}
-                  onChange={(e) => setWaPhone(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#F4F6FA] border border-slate-200 rounded-xl text-sm font-bold"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Coba ubah ke nomor acak (misal <code>089999999</code>) untuk
-                  menguji penolakan nomor tak terdaftar (FR-039).
-                </p>
-              </div>
-
-              <div className="pt-2">
-                <div className="text-xs font-bold text-slate-700 mb-2">
-                  Tombol Cepat Percakapan:
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { label: "Menu Utama", val: "MENU" },
-                    { label: "1 (Pesan Mobil)", val: "1" },
-                    { label: "2 (Booking Saya)", val: "2" },
-                    { label: "3 (Batalkan)", val: "3" },
-                    { label: "Tanggal: 15/12/2026", val: "15/12/2026" },
-                    { label: "Jam: 09:00-14:00", val: "09:00-14:00" },
-                    { label: "YA (Konfirmasi)", val: "YA" },
-                  ].map((q) => (
-                    <button
-                      key={q.label}
-                      type="button"
-                      onClick={() => handleSendWhatsApp(q.val)}
-                      className="px-3 py-1.5 rounded-full bg-[#F4F6FA] hover:bg-[#E8F0FE] text-[#1428A0] border border-slate-200 text-xs font-bold transition"
-                    >
-                      {q.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-7 bg-[#0B1536] rounded-[28px] p-6 text-white flex flex-col h-[500px] shadow-xl">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#0066FF] flex items-center justify-center font-extrabold">
-                  WS
-                </div>
-                <div>
-                  <div className="font-bold text-sm">
-                    Workplace Solution Automated Bot
-                  </div>
-                  <div className="text-[11px] text-emerald-400">
-                    ● Online • Bahasa Indonesia Guided Flow
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto py-4 space-y-3 pr-2">
-              {waMessages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`flex ${
-                    m.sender === "USER" ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  <div
-                    className={`max-w-[82%] rounded-2xl px-4 py-3 text-xs whitespace-pre-line leading-relaxed ${
-                      m.sender === "USER"
-                        ? "bg-[#0066FF] text-white rounded-br-none"
-                        : "bg-white/10 text-blue-50 border border-white/10 rounded-bl-none"
-                    }`}
-                  >
-                    {m.text}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendWhatsApp();
-              }}
-              className="pt-3 border-t border-white/10 flex gap-2"
-            >
-              <input
-                type="text"
-                value={waInput}
-                onChange={(e) => setWaInput(e.target.value)}
-                placeholder="Ketik balasan WhatsApp (contoh: 1, 15/12/2026, YA)..."
-                className="flex-1 bg-white/10 border border-white/15 rounded-full px-4 py-2.5 text-xs text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#00C3FF]"
-              />
-              <button
-                type="submit"
-                disabled={waLoading}
-                className="px-5 py-2.5 rounded-full bg-[#0066FF] hover:bg-[#0052CC] text-white text-xs font-bold flex items-center gap-1.5"
+            bookings.map((bk) => (
+              <div
+                key={bk.id}
+                className="bg-white rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(15,23,42,0.04)] border border-slate-100 space-y-3"
               >
-                <Send className="w-3.5 h-3.5" />
-                <span>Kirim</span>
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: NOTIFICATIONS (S-E5) */}
-      {activeTab === "NOTIFICATIONS" && (
-        <div className="bg-white rounded-[28px] p-6 md:p-8 shadow-sm border border-slate-200">
-          <h3 className="text-xl font-extrabold text-slate-900 mb-4">
-            Kotak Masuk Notifikasi (S-E5)
-          </h3>
-          {notifications.length === 0 ? (
-            <p className="text-sm text-slate-500 py-8 text-center">
-              Belum ada notifikasi.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className="p-4 rounded-2xl bg-[#F4F6FA] border border-slate-200 flex items-start justify-between gap-4"
-                >
-                  <div>
-                    <div className="font-extrabold text-sm text-[#1428A0]">
-                      {n.title}
-                    </div>
-                    <div className="text-xs text-slate-600 mt-1">
-                      {n.message}
-                    </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-xs text-[#1428A0]">
+                      {bk.bookingNo}
+                    </span>
+                    {renderStatusBadge(bk.status)}
                   </div>
-                  <span className="text-[11px] text-slate-400 shrink-0">
-                    {new Date(n.sentAt).toLocaleString("id-ID", {
-                      dateStyle: "short",
-                      timeStyle: "short",
+                  <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {new Date(bk.startAt).toLocaleString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </span>
                 </div>
-              ))}
-            </div>
+
+                <div className="bg-slate-50 rounded-2xl p-3 space-y-1.5">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <Navigation className="w-3.5 h-3.5 text-[#0066FF] shrink-0" />
+                    <span className="truncate">{bk.pickupLocation}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm font-extrabold text-slate-900">
+                    <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span className="truncate">{bk.destination}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+                  <span>
+                    {bk.passengers} Penumpang • {bk.estDistanceKm} km •{" "}
+                    {bk.purpose}
+                  </span>
+                  {bk.vehiclePlate && (
+                    <span className="bg-[#EEF4FF] text-[#1428A0] font-bold px-2.5 py-1 rounded-full">
+                      {bk.vehiclePlate} • {bk.driverName}
+                    </span>
+                  )}
+                </div>
+
+                {bk.decisionNote && (
+                  <div className="text-xs bg-blue-50/70 text-[#1428A0] px-3 py-2 rounded-xl">
+                    <strong>Catatan WS:</strong> {bk.decisionNote}
+                  </div>
+                )}
+
+                {(bk.status === "PENDING_APPROVAL" ||
+                  bk.status === "REVISION_NEEDED" ||
+                  bk.status === "CONFIRMED") && (
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    {(bk.status === "PENDING_APPROVAL" ||
+                      bk.status === "REVISION_NEEDED") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingBooking(bk);
+                          setEditDest(bk.destination);
+                          setEditPurpose(bk.purpose);
+                          setEditPax(bk.passengers);
+                          setEditDist(bk.estDistanceKm);
+                        }}
+                        className="px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Ubah</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleCancelBooking(bk.id)}
+                      className="px-3.5 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold"
+                    >
+                      Batalkan
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
           )}
         </div>
       )}
 
-      {/* Modal for Editing Pending / Revision Needed Booking (FR-005) */}
-      {editingBooking && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-[28px] max-w-lg w-full p-6 shadow-2xl border border-slate-200">
-            <h4 className="text-lg font-extrabold text-slate-900">
-              Edit Permintaan Booking {editingBooking.bookingNo} (FR-005)
-            </h4>
-            <p className="text-xs text-slate-500 mt-1">
-              Perubahan akan mengembalikan permintaan ke antrean persetujuan
-              Workplace Solution Admin.
-            </p>
-
-            <form onSubmit={handleSaveEdit} className="space-y-3.5 mt-4">
+      {/* =====================================================================
+          TAB 3: WHATSAPP BOT SIMULATOR
+         ===================================================================== */}
+      {activeTab === "WHATSAPP_BOT" && (
+        <div className="bg-white rounded-3xl shadow-[0_2px_12px_rgba(15,23,42,0.04)] border border-slate-100 overflow-hidden">
+          <div className="bg-[#1428A0] px-5 py-3.5 text-white flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
+                <PhoneCall className="w-4 h-4 text-[#00C3FF]" />
+              </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Tujuan Perjalanan Dinas
+                <div className="font-extrabold text-xs">
+                  WhatsApp Bot Workplace Solution
+                </div>
+                <div className="text-[10px] text-blue-200">{waPhone}</div>
+              </div>
+            </div>
+            <div className="flex gap-1">
+              {["MENU", "1", "2", "3"].map((cmd) => (
+                <button
+                  key={cmd}
+                  type="button"
+                  onClick={() => handleSendWhatsApp(cmd)}
+                  className="bg-white/15 hover:bg-white/25 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                >
+                  {cmd}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-4 h-[340px] overflow-y-auto bg-slate-50 space-y-2.5">
+            {waMessages.map((m) => (
+              <div
+                key={m.id}
+                className={`flex ${
+                  m.sender === "USER" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`max-w-[82%] rounded-2xl px-3.5 py-2.5 text-xs whitespace-pre-line ${
+                    m.sender === "USER"
+                      ? "bg-[#1428A0] text-white rounded-br-none"
+                      : "bg-white text-slate-800 border border-slate-200/80 rounded-bl-none shadow-sm"
+                  }`}
+                >
+                  {m.text}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendWhatsApp();
+            }}
+            className="p-3 bg-white border-t border-slate-100 flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={waInput}
+              onChange={(e) => setWaInput(e.target.value)}
+              placeholder="Ketik 1, 2, 3 atau pesan..."
+              className="flex-1 px-4 py-2.5 bg-slate-100 rounded-full text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#0066FF]"
+            />
+            <button
+              type="submit"
+              disabled={waLoading}
+              className="w-9 h-9 rounded-full bg-[#1428A0] hover:bg-[#0066FF] text-white flex items-center justify-center shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* =====================================================================
+          TAB 4: NOTIFICATIONS
+         ===================================================================== */}
+      {activeTab === "NOTIFICATIONS" && (
+        <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-[0_2px_12px_rgba(15,23,42,0.04)] border border-slate-100 space-y-2.5">
+          <h3 className="text-sm font-extrabold text-slate-900 px-1">
+            Kotak Masuk ({notifications.length})
+          </h3>
+          {notifications.length === 0 ? (
+            <div className="text-center py-8 text-xs text-slate-400">
+              Belum ada notifikasi.
+            </div>
+          ) : (
+            notifications.map((n) => (
+              <div
+                key={n.id}
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-start justify-between gap-3"
+              >
+                <div>
+                  <div className="font-bold text-xs text-slate-900">
+                    {n.title}
+                  </div>
+                  <p className="text-xs text-slate-600 mt-0.5">{n.message}</p>
+                </div>
+                <span className="text-[10px] text-slate-400 shrink-0">
+                  {new Date(n.sentAt).toLocaleTimeString("id-ID", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* EDIT MODAL */}
+      {editingBooking && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl space-y-3">
+            <h4 className="text-base font-extrabold text-slate-900">
+              Ubah Pesanan {editingBooking.bookingNo}
+            </h4>
+            <form onSubmit={handleSaveEdit} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  Tujuan
                 </label>
                 <input
                   type="text"
                   required
                   value={editDest}
                   onChange={(e) => setEditDest(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#F4F6FA] border border-slate-200 rounded-xl text-sm"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                 />
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
                   Keperluan
                 </label>
                 <input
@@ -1058,28 +957,27 @@ export default function EmployeeGojekApp({
                   required
                   value={editPurpose}
                   onChange={(e) => setEditPurpose(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[#F4F6FA] border border-slate-200 rounded-xl text-sm"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Jumlah Penumpang
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Penumpang
                   </label>
                   <input
                     type="number"
                     min={1}
-                    max={6}
+                    max={12}
                     required
                     value={editPax}
                     onChange={(e) => setEditPax(Number(e.target.value))}
-                    className="w-full px-4 py-2.5 bg-[#F4F6FA] border border-slate-200 rounded-xl text-sm"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Est. Jarak (KM)
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Jarak (km)
                   </label>
                   <input
                     type="number"
@@ -1088,30 +986,57 @@ export default function EmployeeGojekApp({
                     required
                     value={editDist}
                     onChange={(e) => setEditDist(Number(e.target.value))}
-                    className="w-full px-4 py-2.5 bg-[#F4F6FA] border border-slate-200 rounded-xl text-sm"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                   />
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2 pt-3">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setEditingBooking(null)}
-                  className="px-4 py-2 rounded-full border border-slate-300 text-xs font-bold text-slate-600"
+                  className="px-4 py-2 rounded-full border border-slate-200 text-xs font-bold text-slate-600"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-full bg-[#1428A0] text-white text-xs font-bold"
+                  className="px-4 py-2 rounded-full bg-[#1428A0] text-white text-xs font-bold"
                 >
-                  Simpan & Kirim Ulang
+                  Simpan
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Native Android & iOS Mobile Bottom Tab Bar */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 pb-safe">
+        <div className="grid grid-cols-4 h-15 px-2">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveTab(item.id)}
+                className={`flex flex-col items-center justify-center gap-0.5 relative ${
+                  active ? "text-[#1428A0]" : "text-slate-400"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-bold">{item.label}</span>
+                {item.badge > 0 && (
+                  <span className="absolute top-1.5 right-6 bg-[#0066FF] text-white text-[9px] font-extrabold min-w-[15px] h-[15px] px-1 rounded-full flex items-center justify-center">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

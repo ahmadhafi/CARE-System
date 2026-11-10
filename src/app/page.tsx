@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Car,
   LogOut,
-  ShieldCheck,
   LayoutDashboard,
   Compass,
   Navigation,
@@ -29,7 +28,6 @@ export default function HomePage() {
   const [user, setUser] = useState<SafeUser | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  // Admin can preview Employee Gojek View or Driver View seamlessly
   const [viewMode, setViewMode] = useState<
     "ADMIN_DASHBOARD" | "EMPLOYEE_GOJEK" | "DRIVER_APP"
   >("ADMIN_DASHBOARD");
@@ -137,14 +135,12 @@ export default function HomePage() {
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-[#0B1536] flex items-center justify-center text-white">
+      <div className="min-h-screen bg-[#F5F7FB] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-[#0066FF] flex items-center justify-center animate-pulse">
-            <Car className="w-6 h-6 text-white" />
+          <div className="w-11 h-11 rounded-2xl bg-[#1428A0] flex items-center justify-center shadow-md animate-pulse">
+            <Car className="w-5 h-5 text-white" />
           </div>
-          <div className="text-sm font-bold tracking-wide">
-            Memuat Sistem CARE — Workplace Solution...
-          </div>
+          <span className="text-xs font-bold text-slate-500">Memuat CARE...</span>
         </div>
       </div>
     );
@@ -175,68 +171,64 @@ export default function HomePage() {
     user.role === "WORKPLACE_ADMIN" || user.role === "SUPER_ADMIN";
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F2F5FA]">
-      {/* Samsung One UI Top Corporate Navigation Bar */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-lg border-b border-slate-200/80 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 py-3 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#1428A0] to-[#0066FF] flex items-center justify-center text-white shadow-md">
-              <Car className="w-6 h-6" />
+    <div className="min-h-screen flex flex-col bg-[#F5F7FB]">
+      {/* Minimalist Gojek-Style Sticky App Header */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100">
+        <div className="max-w-5xl mx-auto px-3.5 sm:px-6 h-14 flex items-center justify-between gap-2">
+          {/* Brand Logo */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-[#1428A0] flex items-center justify-center text-white shrink-0 shadow-sm">
+              <Car className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-lg text-[#1428A0] tracking-tight">
-                  CARE System
-                </span>
-                <span className="bg-[#E8F0FE] text-[#1428A0] text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
-                  Workplace Solution
-                </span>
-              </div>
-              <div className="text-xs text-slate-500">
-                Corporate Operational Car Booking & Fleet Management
-              </div>
+            <div className="flex items-center gap-1.5 truncate">
+              <span className="font-extrabold text-base text-slate-900 tracking-tight">
+                CARE
+              </span>
+              <span className="bg-[#EEF4FF] text-[#1428A0] text-[10px] font-bold px-2 py-0.5 rounded-full truncate">
+                Workplace Solution
+              </span>
             </div>
           </div>
 
-          {/* Mode Switcher (Admin can inspect all 3 channels: Admin Dashboard, Gojek Employee UI, Driver App) */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Right Controls */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {isAdmin && (
-              <div className="bg-[#EEF2F9] p-1 rounded-full flex items-center gap-1 border border-slate-200">
+              <div className="bg-slate-100 p-0.5 rounded-full flex items-center">
                 <button
                   type="button"
                   onClick={() => setViewMode("ADMIN_DASHBOARD")}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold flex items-center gap-1.5 transition ${
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 transition ${
                     viewMode === "ADMIN_DASHBOARD"
                       ? "bg-[#1428A0] text-white shadow-sm"
-                      : "text-slate-600 hover:text-[#1428A0]"
+                      : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  <LayoutDashboard className="w-3.5 h-3.5" />
-                  <span>WS Admin Dashboard</span>
+                  <LayoutDashboard className="w-3 h-3" />
+                  <span>Admin</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode("EMPLOYEE_GOJEK")}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold flex items-center gap-1.5 transition ${
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 transition ${
                     viewMode === "EMPLOYEE_GOJEK"
                       ? "bg-[#0066FF] text-white shadow-sm"
-                      : "text-slate-600 hover:text-[#1428A0]"
+                      : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  <Compass className="w-3.5 h-3.5" />
-                  <span>Aplikasi Pemohon (Gojek UI)</span>
+                  <Compass className="w-3 h-3" />
+                  <span>GoCar</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode("DRIVER_APP")}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold flex items-center gap-1.5 transition ${
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1 transition ${
                     viewMode === "DRIVER_APP"
-                      ? "bg-[#0B1536] text-white shadow-sm"
-                      : "text-slate-600 hover:text-[#1428A0]"
+                      ? "bg-slate-900 text-white shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  <Navigation className="w-3.5 h-3.5" />
-                  <span>Aplikasi Driver (GPS)</span>
+                  <Navigation className="w-3 h-3" />
+                  <span>Driver</span>
                 </button>
               </div>
             )}
@@ -244,38 +236,39 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => loadWorkspaceData(user)}
-              title="Refresh Data"
-              className="p-2.5 rounded-full bg-[#F4F6FA] hover:bg-[#E8F0FE] text-[#1428A0] border border-slate-200 transition"
+              title="Muat Ulang"
+              className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-3.5 h-3.5" />
             </button>
 
-            <div className="flex items-center gap-2.5 bg-[#F4F6FA] px-3.5 py-1.5 rounded-full border border-slate-200">
-              <ShieldCheck className="w-4 h-4 text-[#0066FF]" />
-              <div className="text-left">
-                <div className="text-xs font-extrabold text-slate-900 leading-tight">
-                  {user.name}
-                </div>
-                <div className="text-[10px] font-bold text-[#1428A0]">
-                  {user.employeeNo} • {user.role}
-                </div>
+            <div className="hidden sm:flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full">
+              <div className="w-5 h-5 rounded-full bg-[#1428A0] text-white text-[10px] font-bold flex items-center justify-center">
+                {user.name.charAt(0)}
               </div>
+              <span className="text-xs font-bold text-slate-800 max-w-[110px] truncate">
+                {user.name.split(" ")[0]}
+              </span>
+              <span className="text-[10px] font-semibold text-slate-500">
+                {user.employeeNo}
+              </span>
             </div>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="px-4 py-2 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition"
+              title="Keluar"
+              className="h-8 px-2.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold flex items-center gap-1 transition"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span>Keluar</span>
+              <span className="hidden sm:inline">Keluar</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Main Responsive Container */}
+      <main className="flex-1 w-full max-w-5xl mx-auto px-3.5 sm:px-6 py-4 pb-24 md:pb-10">
         {viewMode === "ADMIN_DASHBOARD" && isAdmin && (
           <WorkplaceAdminDashboard
             currentUser={user}
@@ -320,23 +313,6 @@ export default function HomePage() {
           />
         )}
       </main>
-
-      {/* Corporate Security Footer */}
-      <footer className="bg-white border-t border-slate-200 py-4 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-          <div>
-            <strong>CARE System v1.0</strong> — Owned & Managed by{" "}
-            <span className="font-bold text-[#1428A0]">
-              Workplace Solution Department
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span>🔒 Internal Corporate Auth (No External OAuth)</span>
-            <span>•</span>
-            <span>🛡️ HttpOnly JWT + Rate-Limited API</span>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
