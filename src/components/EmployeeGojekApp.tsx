@@ -48,6 +48,7 @@ import {
 } from "@/lib/types";
 import WorkplaceAdminDashboard from "./WorkplaceAdminDashboard";
 import DriverTripApp from "./DriverTripApp";
+import PWAInstallButton from "./PWAInstallButton";
 
 interface EmployeeGojekAppProps {
   user: SafeUser;
@@ -123,7 +124,7 @@ export default function EmployeeGojekApp({
   const [editDist, setEditDist] = useState(30);
 
   // WhatsApp Bot Simulator state
-  const [waPhone] = useState(user.phone || "0812800101");
+  const [waPhone] = useState(user.phone || "");
   const [waInput, setWaInput] = useState("");
   const [waMessages, setWaMessages] = useState<
     { id: string; sender: "USER" | "BOT"; text: string; at: string }[]
@@ -391,20 +392,159 @@ export default function EmployeeGojekApp({
   }
 
   return (
-    <div className="min-h-screen bg-[#EEF2F8] flex justify-center">
-      {/* Authentic Gojek Mobile Super-App Container */}
-      <div
-        className={`w-full ${
-          activeTab === "ADMIN_WS" ? "max-w-4xl" : "max-w-[460px]"
-        } min-h-screen bg-[#F7F9FC] sm:shadow-[0_12px_50px_rgba(15,23,42,0.1)] sm:border-x sm:border-slate-200/80 flex flex-col justify-between pb-20 relative transition-all`}
-      >
+    <div className="min-h-screen bg-[#F0F4FA] text-slate-900 selection:bg-[#1428A0] selection:text-white">
+      {/* =================================================================
+          DESKTOP / TABLET TOP NAVIGATION BAR (Visible on md and up)
+         ================================================================= */}
+      <header className="hidden md:block bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          {/* Brand */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#1428A0] text-white flex items-center justify-center font-black text-xl shadow-md">
+              <Car className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-xl tracking-tight text-slate-900 leading-none">
+                  care
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-[#1428A0]/10 text-[#1428A0] text-[10px] font-extrabold uppercase">
+                  Workplace Fleet
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">
+                {settings?.departmentDisplayName || "Workplace Solution"} Corporate Car Booking
+              </p>
+            </div>
+          </div>
+
+          {/* Center Nav Pills */}
+          <nav className="flex items-center gap-1 bg-slate-100 p-1 rounded-full">
+            <button
+              type="button"
+              onClick={() => setActiveTab("HOME")}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                activeTab === "HOME"
+                  ? "bg-white text-[#1428A0] shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Home className="w-3.5 h-3.5" />
+              <span>Beranda</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openGoCarWithType()}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                activeTab === "GOCAR_BOOKING"
+                  ? "bg-[#1428A0] text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Car className="w-3.5 h-3.5" />
+              <span>Pesan CareCar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("ACTIVITY")}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 relative cursor-pointer ${
+                activeTab === "ACTIVITY"
+                  ? "bg-white text-[#1428A0] shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>Aktivitas</span>
+              {activeOrdersCount > 0 && (
+                <span className="bg-[#0066FF] text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center">
+                  {activeOrdersCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("CHAT")}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                activeTab === "CHAT"
+                  ? "bg-white text-[#1428A0] shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>WhatsApp Bot</span>
+            </button>
+
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("ADMIN_WS")}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition flex items-center gap-2 relative cursor-pointer ${
+                  activeTab === "ADMIN_WS"
+                    ? "bg-[#1428A0] text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Admin WS</span>
+                {pendingAdminCount > 0 && (
+                  <span className="bg-rose-500 text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center">
+                    {pendingAdminCount}
+                  </span>
+                )}
+              </button>
+            )}
+          </nav>
+
+          {/* Right Profile & PWA & Logout */}
+          <div className="flex items-center gap-2.5">
+            <PWAInstallButton variant="pill" />
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("PROFILE")}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition cursor-pointer ${
+                activeTab === "PROFILE"
+                  ? "border-[#1428A0] bg-blue-50/50"
+                  : "border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              <div className="w-7 h-7 rounded-full bg-[#1428A0] text-white font-extrabold text-xs flex items-center justify-center shadow-xs">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="text-left text-xs">
+                <p className="font-bold text-slate-800 leading-none truncate max-w-[120px]">
+                  {user.name.split(" ")[0]}
+                </p>
+                <p className="text-[10px] text-slate-400 leading-none mt-0.5">
+                  {user.role}
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={onLogout}
+              title="Keluar"
+              className="w-9 h-9 rounded-full bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 flex items-center justify-center transition cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Container: Mobile phone column (< md) OR Wide Responsive Dashboard (>= md) */}
+      <div className="w-full max-w-md md:max-w-7xl mx-auto min-h-screen md:min-h-0 bg-[#F7F9FC] md:bg-transparent sm:shadow-sm md:shadow-none sm:border-x md:border-none sm:border-slate-200/80 flex flex-col justify-between pb-20 md:pb-12 relative transition-all">
         {/* =================================================================
             SCREEN 1: GOJEK HOME SCREEN (BERANDA)
            ================================================================= */}
         {activeTab === "HOME" && (
           <div className="space-y-4 pb-6">
-            {/* 1. Gojek Top Search Bar + Profile Avatar Header */}
-            <div className="bg-white px-4 pt-4 pb-3 sticky top-0 z-30 border-b border-slate-100 flex items-center gap-3">
+            {/* 1. Gojek Top Search Bar + Profile Avatar Header (Mobile Only) */}
+            <div className="md:hidden bg-white px-4 pt-4 pb-3 sticky top-0 z-30 border-b border-slate-100 flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => openGoCarWithType()}
@@ -427,319 +567,381 @@ export default function EmployeeGojekApp({
               </button>
             </div>
 
-            <div className="px-4 space-y-4">
-              {/* 2. Gojek "GoPay"-Style Blue Wallet / Fleet Status Bar */}
-              <div className="bg-gradient-to-r from-[#1428A0] to-[#0055DF] rounded-[22px] p-3.5 text-white shadow-md shadow-blue-900/15 flex items-center justify-between gap-3">
-                {/* Left White Balance-Style Card */}
-                <button
-                  type="button"
-                  onClick={() => openGoCarWithType()}
-                  className="bg-white text-slate-900 rounded-2xl px-3.5 py-2.5 text-left min-w-[138px] shadow-xs"
-                >
-                  <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-[#1428A0] uppercase">
-                    <Car className="w-3.5 h-3.5 text-[#0066FF]" />
-                    <span>Armada Ready</span>
-                  </div>
-                  <div className="text-base font-extrabold text-slate-900 leading-tight mt-0.5">
-                    {availableUnitsCount} / {vehicles.length} Mobil
-                  </div>
-                  <div className="text-[10px] font-bold text-[#0066FF] mt-0.5">
-                    Klik untuk pesan →
-                  </div>
-                </button>
-
-                {/* Right 3 Gojek Quick-Action Squircle Icons */}
-                <div className="flex items-center justify-around flex-1 gap-1">
+            <div className="px-4 md:px-0 space-y-4 md:space-y-0 md:grid md:grid-cols-12 md:gap-6 md:items-start">
+              {/* Left Column (Desktop 5-cols / Mobile Full) */}
+              <div className="md:col-span-5 lg:col-span-4 space-y-4">
+                {/* 2. Fleet Status Bar */}
+                <div className="bg-gradient-to-r from-[#1428A0] to-[#0055DF] rounded-[24px] p-4 text-white shadow-md shadow-blue-900/15 flex items-center justify-between gap-3">
+                  {/* Left White Balance-Style Card */}
                   <button
                     type="button"
                     onClick={() => openGoCarWithType()}
-                    className="flex flex-col items-center gap-1 group"
+                    className="bg-white text-slate-900 rounded-2xl px-3.5 py-2.5 text-left min-w-[138px] shadow-xs cursor-pointer hover:bg-slate-50 transition"
                   >
-                    <div className="w-8 h-8 rounded-xl bg-white/20 group-hover:bg-white/30 flex items-center justify-center text-white transition">
-                      <Plus className="w-4 h-4" />
+                    <div className="flex items-center gap-1.5 text-[10px] font-extrabold text-[#1428A0] uppercase">
+                      <Car className="w-3.5 h-3.5 text-[#0066FF]" />
+                      <span>Armada Ready</span>
                     </div>
-                    <span className="text-[10px] font-bold">Pesan</span>
+                    <div className="text-base font-extrabold text-slate-900 leading-tight mt-0.5">
+                      {availableUnitsCount} / {vehicles.length} Mobil
+                    </div>
+                    <div className="text-[10px] font-bold text-[#0066FF] mt-0.5">
+                      Klik untuk pesan →
+                    </div>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("ACTIVITY")}
-                    className="flex flex-col items-center gap-1 group"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-white/20 group-hover:bg-white/30 flex items-center justify-center text-white transition">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                    <span className="text-[10px] font-bold">Riwayat</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveTab(isAdmin ? "ADMIN_WS" : "CHAT")
-                    }
-                    className="flex flex-col items-center gap-1 group relative"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-white/20 group-hover:bg-white/30 flex items-center justify-center text-white transition">
-                      {isAdmin ? (
-                        <ShieldCheck className="w-4 h-4" />
-                      ) : (
-                        <MessageSquare className="w-4 h-4" />
-                      )}
-                    </div>
-                    <span className="text-[10px] font-bold">
-                      {isAdmin ? "Panel WS" : "Chat WA"}
-                    </span>
-                    {isAdmin && pendingAdminCount > 0 && (
-                      <span className="absolute -top-1 right-1 bg-rose-500 text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center">
-                        {pendingAdminCount}
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* 3. Gojek Circular/Squircle Service Icons Grid */}
-              <div className="bg-white rounded-[24px] p-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)] border border-slate-100">
-                <div className="grid grid-cols-4 gap-y-4 gap-x-2">
-                  {/* Dynamic Car Types from DB rendered as Gojek Service Icons */}
-                  {activeCarTypes.slice(0, 2).map((ct) => (
+                  {/* Right 3 Quick-Action Icons */}
+                  <div className="flex items-center justify-around flex-1 gap-1">
                     <button
-                      key={ct.id}
                       type="button"
-                      onClick={() => openGoCarWithType(ct.id)}
-                      className="flex flex-col items-center text-center group"
+                      onClick={() => openGoCarWithType()}
+                      className="flex flex-col items-center gap-1 group cursor-pointer"
                     >
-                      <div
-                        className={`w-13 h-13 rounded-[20px] flex items-center justify-center mb-1.5 relative shadow-xs transition group-active:scale-95 ${
-                          ct.powertrain === "EV"
-                            ? "bg-[#EEF4FF] text-[#1428A0]"
-                            : "bg-blue-50 text-[#0066FF]"
-                        }`}
-                      >
-                        {ct.powertrain === "EV" ? (
-                          <Zap className="w-6 h-6 text-[#0066FF]" />
+                      <div className="w-8 h-8 rounded-xl bg-white/20 group-hover:bg-white/30 flex items-center justify-center text-white transition">
+                        <Plus className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-bold">Pesan</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("ACTIVITY")}
+                      className="flex flex-col items-center gap-1 group cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-white/20 group-hover:bg-white/30 flex items-center justify-center text-white transition">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-bold">Riwayat</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setActiveTab(isAdmin ? "ADMIN_WS" : "CHAT")
+                      }
+                      className="flex flex-col items-center gap-1 group relative cursor-pointer"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-white/20 group-hover:bg-white/30 flex items-center justify-center text-white transition">
+                        {isAdmin ? (
+                          <ShieldCheck className="w-4 h-4" />
                         ) : (
-                          <Car className="w-6 h-6 text-[#1428A0]" />
+                          <MessageSquare className="w-4 h-4" />
                         )}
-                        <span className="absolute -top-1 -right-1 bg-[#1428A0] text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full">
-                          {ct.powertrain === "EV" ? "EV" : `${ct.seats}K`}
-                        </span>
                       </div>
-                      <span className="text-[11px] font-bold text-slate-800 leading-tight line-clamp-1">
-                        {ct.name.replace("Operasional", "")}
+                      <span className="text-[10px] font-bold">
+                        {isAdmin ? "Panel WS" : "Chat WA"}
                       </span>
+                      {isAdmin && pendingAdminCount > 0 && (
+                        <span className="absolute -top-1 right-1 bg-rose-500 text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center">
+                          {pendingAdminCount}
+                        </span>
+                      )}
                     </button>
-                  ))}
+                  </div>
+                </div>
 
-                  {/* WhatsApp Bot Service Icon */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("CHAT")}
-                    className="flex flex-col items-center text-center group"
-                  >
-                    <div className="w-13 h-13 rounded-[20px] bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95">
-                      <PhoneCall className="w-6 h-6" />
-                    </div>
-                    <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                      WA Bot
-                    </span>
-                  </button>
+                {/* PWA Install Banner */}
+                <PWAInstallButton variant="banner" className="shadow-xs" />
 
-                  {/* Activity / Schedule Service Icon */}
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("ACTIVITY")}
-                    className="flex flex-col items-center text-center group relative"
-                  >
-                    <div className="w-13 h-13 rounded-[20px] bg-amber-50 text-amber-600 flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95">
-                      <Calendar className="w-6 h-6" />
-                    </div>
-                    <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                      Pesanan
-                    </span>
-                  </button>
-
-                  {/* Additional Admin Service Icons if Workplace Solution Admin */}
-                  {isAdmin && (
-                    <>
+                {/* 3. Service Icons Grid */}
+                <div className="bg-white rounded-[24px] p-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)] border border-slate-100">
+                  <div className="grid grid-cols-4 gap-y-4 gap-x-2">
+                    {/* Dynamic Car Types */}
+                    {activeCarTypes.slice(0, 2).map((ct) => (
                       <button
+                        key={ct.id}
                         type="button"
-                        onClick={() => setActiveTab("ADMIN_WS")}
-                        className="flex flex-col items-center text-center group relative"
+                        onClick={() => openGoCarWithType(ct.id)}
+                        className="flex flex-col items-center text-center group cursor-pointer"
                       >
-                        <div className="w-13 h-13 rounded-[20px] bg-rose-50 text-rose-600 flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95 relative">
-                          <CheckCircle2 className="w-6 h-6" />
-                          {pendingAdminCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center">
-                              {pendingAdminCount}
-                            </span>
+                        <div
+                          className={`w-13 h-13 rounded-[20px] flex items-center justify-center mb-1.5 relative shadow-xs transition group-active:scale-95 ${
+                            ct.powertrain === "EV"
+                              ? "bg-[#EEF4FF] text-[#1428A0]"
+                              : "bg-blue-50 text-[#0066FF]"
+                          }`}
+                        >
+                          {ct.powertrain === "EV" ? (
+                            <Zap className="w-6 h-6 text-[#0066FF]" />
+                          ) : (
+                            <Car className="w-6 h-6 text-[#1428A0]" />
                           )}
+                          <span className="absolute -top-1 -right-1 bg-[#1428A0] text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded-full">
+                            {ct.powertrain === "EV" ? "EV" : `${ct.seats}K`}
+                          </span>
                         </div>
-                        <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                          Approval
+                        <span className="text-[11px] font-bold text-slate-800 leading-tight line-clamp-1">
+                          {ct.name.replace("Operasional", "")}
                         </span>
                       </button>
+                    ))}
 
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("ADMIN_WS")}
-                        className="flex flex-col items-center text-center group"
-                      >
-                        <div className="w-13 h-13 rounded-[20px] bg-indigo-50 text-[#1428A0] flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95">
-                          <Car className="w-6 h-6" />
-                        </div>
-                        <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                          Kelola Mobil
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("ADMIN_WS")}
-                        className="flex flex-col items-center text-center group"
-                      >
-                        <div className="w-13 h-13 rounded-[20px] bg-purple-50 text-purple-600 flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95">
-                          <Users className="w-6 h-6" />
-                        </div>
-                        <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                          Kelola User
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("ADMIN_WS")}
-                        className="flex flex-col items-center text-center group"
-                      >
-                        <div className="w-13 h-13 rounded-[20px] bg-cyan-50 text-[#0066FF] flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95">
-                          <FileText className="w-6 h-6" />
-                        </div>
-                        <span className="text-[11px] font-bold text-slate-800 leading-tight">
-                          PDF Report
-                        </span>
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* 4. Quick Destination Shortcuts (Gojek "Pergi lagi ke sini" Card) */}
-              <div className="bg-white rounded-[24px] p-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)] border border-slate-100 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-extrabold text-slate-900">
-                    Tujuan Dinas Populer
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => openGoCarWithType()}
-                    className="text-[11px] font-bold text-[#0066FF]"
-                  >
-                    Pesan Sekarang →
-                  </button>
-                </div>
-
-                <div className="space-y-1.5">
-                  {[
-                    {
-                      place: "Pacific Place SCBD, Jakarta Selatan",
-                      km: 18,
-                    },
-                    {
-                      place: "Bandara Soekarno-Hatta Terminal 3",
-                      km: 35,
-                    },
-                    {
-                      place: "Kawasan Industri Jababeka Cikarang",
-                      km: 52,
-                    },
-                  ].map((item) => (
+                    {/* WhatsApp Bot Service Icon */}
                     <button
-                      key={item.place}
                       type="button"
-                      onClick={() => {
-                        setDestination(item.place);
-                        setEstDistanceKm(item.km);
-                        openGoCarWithType();
-                      }}
-                      className="w-full p-2.5 rounded-2xl hover:bg-slate-50 border border-slate-100 flex items-center justify-between gap-3 text-left transition"
+                      onClick={() => setActiveTab("CHAT")}
+                      className="flex flex-col items-center text-center group cursor-pointer"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-[#EEF4FF] text-[#1428A0] flex items-center justify-center shrink-0">
-                          <MapPin className="w-4 h-4" />
-                        </div>
-                        <span className="text-xs font-bold text-slate-800 truncate">
-                          {item.place}
-                        </span>
+                      <div className="w-13 h-13 rounded-[20px] bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95">
+                        <PhoneCall className="w-6 h-6" />
                       </div>
-                      <span className="text-[11px] font-bold text-slate-400 shrink-0">
-                        ~{item.km} km
+                      <span className="text-[11px] font-bold text-slate-800 leading-tight">
+                        WA Bot
                       </span>
                     </button>
-                  ))}
-                </div>
-              </div>
 
-              {/* 5. Active Bookings / Driver Tasks Preview Card */}
-              {isDriver ? (
-                <DriverTripApp
-                  user={user}
-                  bookings={bookings}
-                  vehicles={vehicles}
-                  employees={allUsers.map((u) => ({
-                    id: u.id,
-                    employeeNo: u.employeeNo,
-                    name: u.name,
-                    department: u.department,
-                  }))}
-                  onRefresh={onRefresh}
-                />
-              ) : (
-                myBookings.slice(0, 2).length > 0 && (
-                  <div className="bg-white rounded-[24px] p-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)] border border-slate-100 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-extrabold text-slate-900">
-                        Perjalanan Terkini
-                      </h3>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("ACTIVITY")}
-                        className="text-[11px] font-bold text-[#0066FF]"
-                      >
-                        Lihat Semua
-                      </button>
-                    </div>
-
-                    {myBookings.slice(0, 2).map((bk) => (
-                      <div
-                        key={bk.id}
-                        className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-2"
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-extrabold text-[#1428A0]">
-                              {bk.bookingNo}
-                            </span>
-                            {renderStatusBadge(bk.status)}
-                          </div>
-                          <div className="text-xs font-bold text-slate-900 truncate mt-1">
-                            {bk.destination}
-                          </div>
-                          <div className="text-[10px] text-slate-500">
-                            {new Date(bk.startAt).toLocaleString("id-ID", {
-                              day: "2-digit",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                            {bk.vehiclePlate ? ` • ${bk.vehiclePlate}` : ""}
-                          </div>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
+                    {/* Activity / Schedule Service Icon */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("ACTIVITY")}
+                      className="flex flex-col items-center text-center group relative cursor-pointer"
+                    >
+                      <div className="w-13 h-13 rounded-[20px] bg-amber-50 text-amber-600 flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95">
+                        <Calendar className="w-6 h-6" />
                       </div>
+                      <span className="text-[11px] font-bold text-slate-800 leading-tight">
+                        Pesanan
+                      </span>
+                    </button>
+
+                    {/* Admin Services if Admin */}
+                    {isAdmin && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("ADMIN_WS")}
+                          className="flex flex-col items-center text-center group relative cursor-pointer"
+                        >
+                          <div className="w-13 h-13 rounded-[20px] bg-rose-50 text-rose-600 flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95 relative">
+                            <CheckCircle2 className="w-6 h-6" />
+                            {pendingAdminCount > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center">
+                                {pendingAdminCount}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-800 leading-tight">
+                            Approval
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("ADMIN_WS")}
+                          className="flex flex-col items-center text-center group cursor-pointer"
+                        >
+                          <div className="w-13 h-13 rounded-[20px] bg-indigo-50 text-[#1428A0] flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95">
+                            <Car className="w-6 h-6" />
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-800 leading-tight">
+                            Kelola Mobil
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("ADMIN_WS")}
+                          className="flex flex-col items-center text-center group cursor-pointer"
+                        >
+                          <div className="w-13 h-13 rounded-[20px] bg-purple-50 text-purple-600 flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95">
+                            <Users className="w-6 h-6" />
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-800 leading-tight">
+                            Kelola User
+                          </span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("ADMIN_WS")}
+                          className="flex flex-col items-center text-center group cursor-pointer"
+                        >
+                          <div className="w-13 h-13 rounded-[20px] bg-cyan-50 text-[#0066FF] flex items-center justify-center mb-1.5 shadow-xs transition group-active:scale-95">
+                            <FileText className="w-6 h-6" />
+                          </div>
+                          <span className="text-[11px] font-bold text-slate-800 leading-tight">
+                            PDF Report
+                          </span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Quick Destination Shortcuts */}
+                <div className="bg-white rounded-[24px] p-4 shadow-[0_2px_10px_rgba(15,23,42,0.03)] border border-slate-100 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-extrabold text-slate-900">
+                      Tujuan Dinas Populer
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => openGoCarWithType()}
+                      className="text-[11px] font-bold text-[#0066FF] cursor-pointer"
+                    >
+                      Pesan Sekarang →
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {[
+                      {
+                        place: "Pacific Place SCBD, Jakarta Selatan",
+                        km: 18,
+                      },
+                      {
+                        place: "Bandara Soekarno-Hatta Terminal 3",
+                        km: 35,
+                      },
+                      {
+                        place: "Kawasan Industri Jababeka Cikarang",
+                        km: 52,
+                      },
+                    ].map((item) => (
+                      <button
+                        key={item.place}
+                        type="button"
+                        onClick={() => {
+                          setDestination(item.place);
+                          setEstDistanceKm(item.km);
+                          openGoCarWithType();
+                        }}
+                        className="w-full p-2.5 rounded-2xl hover:bg-slate-50 border border-slate-100 flex items-center justify-between gap-3 text-left transition cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-[#EEF4FF] text-[#1428A0] flex items-center justify-center shrink-0">
+                            <MapPin className="w-4 h-4" />
+                          </div>
+                          <span className="text-xs font-bold text-slate-800 truncate">
+                            {item.place}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-400 shrink-0">
+                          ~{item.km} km
+                        </span>
+                      </button>
                     ))}
                   </div>
-                )
-              )}
+                </div>
+              </div>
+
+              {/* Right Column (Desktop 7-cols / Mobile Full) */}
+              <div className="md:col-span-7 lg:col-span-8 space-y-4">
+                {/* 5. Driver Tasks (If Driver) or Active Booking Card / Clean Launcher */}
+                {isDriver ? (
+                  <DriverTripApp
+                    user={user}
+                    bookings={bookings}
+                    vehicles={vehicles}
+                    employees={allUsers.map((u) => ({
+                      id: u.id,
+                      employeeNo: u.employeeNo,
+                      name: u.name,
+                      department: u.department,
+                    }))}
+                    onRefresh={onRefresh}
+                  />
+                ) : (
+                  <>
+                    {/* Hero Corporate Car Booking Action Banner */}
+                    <div className="bg-gradient-to-br from-white to-[#EEF4FF] rounded-[28px] p-5 sm:p-6 border border-blue-100 shadow-sm relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="space-y-1.5 max-w-lg z-10">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1428A0]/10 text-[#1428A0] text-[10px] font-extrabold">
+                          <Zap className="w-3 h-3 text-[#0066FF]" />
+                          <span>Armada Ramah Lingkungan & MPV Eksekutif</span>
+                        </div>
+                        <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 leading-snug">
+                          Pesan Mobil Operasional Kantor
+                        </h2>
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                          Ajukan perjalanan dinas, jemput tamu perusahaan, atau kunjungan klien resmi. Terintegrasi dengan sistem persetujuan Workplace Solution.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => openGoCarWithType()}
+                        className="px-5 py-3 rounded-full bg-[#1428A0] hover:bg-[#0066FF] text-white font-extrabold text-xs shadow-md shadow-blue-900/15 flex items-center gap-2 transition active:scale-95 shrink-0 z-10 cursor-pointer"
+                      >
+                        <Car className="w-4 h-4" />
+                        <span>Pesan CareCar Sekarang</span>
+                      </button>
+                    </div>
+
+                    {/* Perjalanan Terkini Card */}
+                    <div className="bg-white rounded-[28px] p-5 shadow-xs border border-slate-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-[#1428A0]" />
+                          <span>Perjalanan Terkini Saya</span>
+                        </h3>
+                        {myBookings.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab("ACTIVITY")}
+                            className="text-xs font-bold text-[#0066FF] hover:underline cursor-pointer"
+                          >
+                            Lihat Semua ({myBookings.length}) →
+                          </button>
+                        )}
+                      </div>
+
+                      {myBookings.length === 0 ? (
+                        <div className="p-8 rounded-2xl bg-slate-50/70 border border-slate-100 text-center space-y-2">
+                          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#1428A0] flex items-center justify-center mx-auto">
+                            <Car className="w-6 h-6" />
+                          </div>
+                          <p className="text-xs font-bold text-slate-700">
+                            Belum ada riwayat perjalanan dinas
+                          </p>
+                          <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                            Semua pemesanan mobil kantor yang Anda ajukan akan tercatat di sini secara real-time.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => openGoCarWithType()}
+                            className="mt-2 px-4 py-2 rounded-full bg-[#1428A0] text-white text-xs font-extrabold shadow-sm hover:bg-[#0066FF] transition cursor-pointer"
+                          >
+                            + Ajukan Pesanan Baru
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {myBookings.slice(0, 3).map((bk) => (
+                            <div
+                              key={bk.id}
+                              className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-3 hover:bg-blue-50/30 transition"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-extrabold text-[#1428A0]">
+                                    {bk.bookingNo}
+                                  </span>
+                                  {renderStatusBadge(bk.status)}
+                                </div>
+                                <div className="text-xs font-bold text-slate-900 truncate mt-1">
+                                  {bk.destination}
+                                </div>
+                                <div className="text-[10px] text-slate-500 mt-0.5">
+                                  {new Date(bk.startAt).toLocaleString("id-ID", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                  {bk.vehiclePlate ? ` • ${bk.vehiclePlate} (${bk.vehicleModel})` : ""}
+                                  {bk.driverName ? ` • Driver: ${bk.driverName}` : ""}
+                                </div>
+                              </div>
+                              <ArrowRight className="w-4 h-4 text-slate-400 shrink-0" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -748,9 +950,9 @@ export default function EmployeeGojekApp({
             SCREEN 2: GOJEK GOCAR MAP + BOTTOM SHEET BOOKING SCREEN
            ================================================================= */}
         {activeTab === "GOCAR_BOOKING" && (
-          <div className="flex-1 flex flex-col justify-between bg-[#E6EEF8]">
+          <div className="flex-1 flex flex-col justify-between bg-[#E6EEF8] md:bg-transparent md:grid md:grid-cols-12 md:gap-6 md:p-6">
             {/* Top Interactive-Style GoCar Street Map Area */}
-            <div className="relative h-56 sm:h-64 bg-gradient-to-b from-[#DCE8FA] to-[#CFE0F8] overflow-hidden p-4 flex flex-col justify-between">
+            <div className="relative h-56 sm:h-64 md:h-full md:min-h-[500px] md:col-span-5 lg:col-span-5 md:rounded-[32px] bg-gradient-to-b from-[#DCE8FA] to-[#CFE0F8] overflow-hidden p-4 md:p-6 flex flex-col justify-between shadow-sm border border-blue-100">
               {/* Stylized Street Grid */}
               <div className="absolute inset-0 opacity-30 bg-[linear-gradient(to_right,#94A3B8_1px,transparent_1px),linear-gradient(to_bottom,#94A3B8_1px,transparent_1px)] [background-size:28px_28px]" />
 
@@ -759,7 +961,7 @@ export default function EmployeeGojekApp({
                 <button
                   type="button"
                   onClick={() => setActiveTab("HOME")}
-                  className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-slate-800"
+                  className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center text-slate-800 hover:bg-slate-50 transition cursor-pointer"
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
@@ -772,7 +974,7 @@ export default function EmployeeGojekApp({
               <div className="relative z-10 my-auto px-4 flex items-center justify-between">
                 <div className="bg-white px-2.5 py-1 rounded-full shadow-md flex items-center gap-1.5 text-[10px] font-extrabold text-[#0066FF]">
                   <span className="w-2 h-2 rounded-full bg-[#0066FF]" />
-                  <span className="truncate max-w-[95px]">
+                  <span className="truncate max-w-[95px] md:max-w-[130px]">
                     {pickupLocation}
                   </span>
                 </div>
@@ -783,20 +985,20 @@ export default function EmployeeGojekApp({
                 </div>
                 <div className="bg-white px-2.5 py-1 rounded-full shadow-md flex items-center gap-1 text-[10px] font-extrabold text-rose-600">
                   <MapPin className="w-3 h-3 shrink-0" />
-                  <span className="truncate max-w-[95px]">
+                  <span className="truncate max-w-[95px] md:max-w-[130px]">
                     {destination || "Tujuan"}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Gojek Draggable-Style White Bottom Sheet */}
+            {/* Gojek Draggable-Style White Bottom Sheet (or Desktop Right Card) */}
             <form
               onSubmit={handleCreateBooking}
-              className="flex-1 bg-white rounded-t-[32px] -mt-5 relative z-20 shadow-[0_-10px_35px_rgba(15,23,42,0.08)] p-5 space-y-4"
+              className="flex-1 md:flex-initial md:col-span-7 lg:col-span-7 bg-white rounded-t-[32px] md:rounded-[32px] -mt-5 md:mt-0 relative z-20 shadow-[0_-10px_35px_rgba(15,23,42,0.08)] md:shadow-xs md:border md:border-slate-100 p-5 md:p-6 space-y-4"
             >
-              {/* Drag Handle */}
-              <div className="w-10 h-1.5 rounded-full bg-slate-200 mx-auto -mt-1" />
+              {/* Drag Handle (Mobile only) */}
+              <div className="w-10 h-1.5 rounded-full bg-slate-200 mx-auto -mt-1 md:hidden" />
 
               {errorMsg && (
                 <div className="bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl p-3 text-xs space-y-2">
@@ -1073,10 +1275,10 @@ export default function EmployeeGojekApp({
               />
             )}
 
-            <div className="space-y-2.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {myBookings.length === 0 ? (
-                <div className="bg-white rounded-3xl p-10 text-center text-xs text-slate-400 border border-slate-100">
-                  Belum ada riwayat pesanan.
+                <div className="col-span-full bg-white rounded-3xl p-10 text-center text-xs text-slate-400 border border-slate-100">
+                  Belum ada riwayat pesanan dinas aktif. Klik tombol di atas untuk mengajukan pesanan baru.
                 </div>
               ) : (
                 myBookings.map((bk) => (
@@ -1162,98 +1364,113 @@ export default function EmployeeGojekApp({
             SCREEN 4: CHAT WA BOT & KOTAK MASUK NOTIFIKASI
            ================================================================= */}
         {activeTab === "CHAT" && (
-          <div className="p-4 space-y-4">
-            <h2 className="text-lg font-extrabold text-slate-900">
+          <div className="p-4 md:p-6 space-y-4">
+            <h2 className="text-lg md:text-xl font-extrabold text-slate-900">
               Chat & Kotak Masuk
             </h2>
 
-            <div className="bg-white rounded-3xl shadow-xs border border-slate-100 overflow-hidden">
-              <div className="bg-[#1428A0] px-4 py-3 text-white flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <PhoneCall className="w-4 h-4 text-[#00C3FF]" />
-                  <span className="font-extrabold text-xs">
-                    WhatsApp Bot Workplace Solution
-                  </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+              <div className="bg-white rounded-3xl shadow-xs border border-slate-100 overflow-hidden">
+                <div className="bg-[#1428A0] px-4 py-3 text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <PhoneCall className="w-4 h-4 text-[#00C3FF]" />
+                    <span className="font-extrabold text-xs">
+                      WhatsApp Bot Workplace Solution
+                    </span>
+                  </div>
+                  <div className="flex gap-1">
+                    {["MENU", "1", "2", "3"].map((cmd) => (
+                      <button
+                        key={cmd}
+                        type="button"
+                        onClick={() => handleSendWhatsApp(cmd)}
+                        className="bg-white/15 hover:bg-white/25 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                      >
+                        {cmd}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  {["MENU", "1", "2", "3"].map((cmd) => (
-                    <button
-                      key={cmd}
-                      type="button"
-                      onClick={() => handleSendWhatsApp(cmd)}
-                      className="bg-white/15 hover:bg-white/25 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                    >
-                      {cmd}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
-              <div className="p-3.5 h-72 overflow-y-auto bg-slate-50 space-y-2">
-                {waMessages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`flex ${
-                      m.sender === "USER" ? "justify-end" : "justify-start"
-                    }`}
-                  >
+                <div className="p-3.5 h-80 overflow-y-auto bg-slate-50 space-y-2">
+                  {waMessages.map((m) => (
                     <div
-                      className={`max-w-[82%] rounded-2xl px-3 py-2 text-xs whitespace-pre-line ${
-                        m.sender === "USER"
-                          ? "bg-[#1428A0] text-white rounded-br-none"
-                          : "bg-white text-slate-800 border border-slate-200/80 rounded-bl-none"
+                      key={m.id}
+                      className={`flex ${
+                        m.sender === "USER" ? "justify-end" : "justify-start"
                       }`}
                     >
-                      {m.text}
+                      <div
+                        className={`max-w-[82%] rounded-2xl px-3 py-2 text-xs whitespace-pre-line ${
+                          m.sender === "USER"
+                            ? "bg-[#1428A0] text-white rounded-br-none"
+                            : "bg-white text-slate-800 border border-slate-200/80 rounded-bl-none"
+                        }`}
+                      >
+                        {m.text}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendWhatsApp();
+                  }}
+                  className="p-2.5 bg-white border-t border-slate-100 flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={waInput}
+                    onChange={(e) => setWaInput(e.target.value)}
+                    placeholder="Ketik 1, 2, 3 atau pesan..."
+                    className="flex-1 px-3.5 py-2 bg-slate-100 rounded-full text-xs font-semibold focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={waLoading}
+                    className="w-8 h-8 rounded-full bg-[#1428A0] text-white flex items-center justify-center shrink-0 hover:bg-[#0066FF] transition cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                </form>
               </div>
 
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSendWhatsApp();
-                }}
-                className="p-2.5 bg-white border-t border-slate-100 flex items-center gap-2"
-              >
-                <input
-                  type="text"
-                  value={waInput}
-                  onChange={(e) => setWaInput(e.target.value)}
-                  placeholder="Ketik 1, 2, 3 atau pesan..."
-                  className="flex-1 px-3.5 py-2 bg-slate-100 rounded-full text-xs font-semibold focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={waLoading}
-                  className="w-8 h-8 rounded-full bg-[#1428A0] text-white flex items-center justify-center shrink-0"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                </button>
-              </form>
-            </div>
-
-            {/* Notifications List */}
-            <div className="bg-white rounded-3xl p-4 shadow-xs border border-slate-100 space-y-2">
-              <h3 className="text-xs font-extrabold text-slate-900">
-                Notifikasi Terbaru ({notifications.length})
-              </h3>
-              {notifications.slice(0, 6).map((n) => (
-                <div
-                  key={n.id}
-                  className="p-3 rounded-2xl bg-slate-50 flex items-start justify-between gap-2"
-                >
-                  <div>
-                    <div className="font-bold text-xs text-slate-900">
-                      {n.title}
-                    </div>
-                    <p className="text-[11px] text-slate-600 mt-0.5">
-                      {n.message}
-                    </p>
-                  </div>
+              {/* Notifications List */}
+              <div className="bg-white rounded-3xl p-5 shadow-xs border border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-extrabold text-slate-900">
+                    Notifikasi Terbaru ({notifications.length})
+                  </h3>
+                  <span className="text-[10px] font-bold text-slate-400">
+                    Real-time alert
+                  </span>
                 </div>
-              ))}
+                {notifications.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400 text-xs">
+                    Belum ada notifikasi baru
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {notifications.slice(0, 8).map((n) => (
+                      <div
+                        key={n.id}
+                        className="p-3 rounded-2xl bg-slate-50 flex items-start justify-between gap-2 border border-slate-100/80"
+                      >
+                        <div>
+                          <div className="font-bold text-xs text-slate-900">
+                            {n.title}
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                            {n.message}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1262,7 +1479,7 @@ export default function EmployeeGojekApp({
             SCREEN 5: WORKPLACE SOLUTION ADMIN PANEL (EMBEDDED IN GOJEK APP)
            ================================================================= */}
         {activeTab === "ADMIN_WS" && isAdmin && (
-          <div className="p-4">
+          <div className="p-4 md:p-6">
             <WorkplaceAdminDashboard
               currentUser={user}
               bookings={bookings}
@@ -1280,7 +1497,7 @@ export default function EmployeeGojekApp({
             SCREEN 6: GOJEK PROFILE & ACCOUNT SETTINGS SCREEN
            ================================================================= */}
         {activeTab === "PROFILE" && (
-          <div className="p-4 space-y-4">
+          <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
             {/* Top Gojek Profile Header Card */}
             <div className="bg-white rounded-3xl p-5 shadow-xs border border-slate-100 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3.5">
@@ -1473,12 +1690,10 @@ export default function EmployeeGojekApp({
         )}
 
         {/* =================================================================
-            GOJEK STICKY BOTTOM NAVIGATION BAR
+            MOBILE BOTTOM NAVIGATION BAR (Hidden on desktop / tablet)
            ================================================================= */}
         <nav
-          className={`fixed bottom-0 z-40 w-full ${
-            activeTab === "ADMIN_WS" ? "max-w-4xl" : "max-w-[460px]"
-          } bg-white/95 backdrop-blur-md border-t border-slate-200/80 pb-safe`}
+          className="md:hidden fixed bottom-0 z-40 w-full max-w-md left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md border-t border-slate-200/80 pb-safe shadow-lg"
         >
           <div
             className={`grid ${

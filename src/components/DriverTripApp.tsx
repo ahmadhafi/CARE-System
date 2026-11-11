@@ -52,13 +52,13 @@ export default function DriverTripApp({
     null
   );
 
-  const [odoStart, setOdoStart] = useState<number>(15000);
-  const [levelStart, setLevelStart] = useState<number>(90);
+  const [odoStart, setOdoStart] = useState<number>(0);
+  const [levelStart, setLevelStart] = useState<number>(100);
   const [actualUserIds, setActualUserIds] = useState<string[]>([]);
   const [checkoutNote, setCheckoutNote] = useState("");
 
-  const [odoEnd, setOdoEnd] = useState<number>(15045);
-  const [levelEnd, setLevelEnd] = useState<number>(72);
+  const [odoEnd, setOdoEnd] = useState<number>(0);
+  const [levelEnd, setLevelEnd] = useState<number>(100);
   const [checkinNote, setCheckinNote] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -83,8 +83,8 @@ export default function DriverTripApp({
 
   function openCheckoutModal(bk: Booking) {
     const veh = vehicles.find((v) => v.id === bk.vehicleId);
-    setOdoStart(veh?.odometerKm || 14250);
-    setLevelStart(veh?.currentLevel || 90);
+    setOdoStart(veh?.odometerKm || 0);
+    setLevelStart(veh?.currentLevel || 100);
     setActualUserIds([bk.requesterId]);
     setCheckoutNote("");
     setSelectedCheckoutBk(bk);
@@ -92,9 +92,10 @@ export default function DriverTripApp({
   }
 
   function openCheckinModal(bk: Booking) {
-    const startOdo = bk.trip?.odoStart || 15000;
-    setOdoEnd(startOdo + (bk.estDistanceKm || 35));
-    setLevelEnd(Math.max(20, (bk.trip?.levelStart || 85) - 18));
+    const veh = vehicles.find((v) => v.id === bk.vehicleId);
+    const startOdo = bk.trip?.odoStart || veh?.odometerKm || 0;
+    setOdoEnd(startOdo + (bk.estDistanceKm || 10));
+    setLevelEnd(Math.max(10, (bk.trip?.levelStart || veh?.currentLevel || 100) - 10));
     setCheckinNote(bk.trip?.incidentNote || "");
     setSelectedCheckinBk(bk);
     setFeedback(null);
