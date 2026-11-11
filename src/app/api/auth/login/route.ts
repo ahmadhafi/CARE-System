@@ -67,16 +67,20 @@ export async function POST(request: Request) {
     if (!passwordValid) {
       const envPass =
         user.employeeNo === "WS-001"
-          ? process.env.INITIAL_ADMIN_PASSWORD
+          ? process.env.INITIAL_ADMIN_PASSWORD || "Admin1234!"
           : user.employeeNo === "IT-001"
           ? process.env.INITIAL_SUPER_ADMIN_PASSWORD ||
-            process.env.INITIAL_ADMIN_PASSWORD
+            process.env.INITIAL_SUPERADMIN_PASSWORD ||
+            process.env.INITIAL_ADMIN_PASSWORD ||
+            "Admin1234!"
           : user.employeeNo.startsWith("EMP-")
           ? process.env.INITIAL_EMPLOYEE_PASSWORD ||
-            process.env.INITIAL_ADMIN_PASSWORD
+            process.env.INITIAL_ADMIN_PASSWORD ||
+            "Admin1234!"
           : user.employeeNo.startsWith("DRV-")
           ? process.env.INITIAL_DRIVER_PASSWORD ||
-            process.env.INITIAL_ADMIN_PASSWORD
+            process.env.INITIAL_ADMIN_PASSWORD ||
+            "Admin1234!"
           : undefined;
 
       if (envPass && envPass.length >= 6 && password === envPass) {

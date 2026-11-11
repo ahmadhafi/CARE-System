@@ -108,8 +108,14 @@ function getSeedPasswordHashes() {
     }
   }
 
-  const adminPass = process.env.INITIAL_ADMIN_PASSWORD || fallbackPass;
-  const superPass = process.env.INITIAL_SUPERADMIN_PASSWORD || adminPass;
+  const defaultDevPass = "Admin1234!";
+  const adminPass =
+    process.env.INITIAL_ADMIN_PASSWORD ||
+    (process.env.NODE_ENV === "production" ? fallbackPass : defaultDevPass);
+  const superPass =
+    process.env.INITIAL_SUPER_ADMIN_PASSWORD ||
+    process.env.INITIAL_SUPERADMIN_PASSWORD ||
+    adminPass;
   const empPass = process.env.INITIAL_EMPLOYEE_PASSWORD || adminPass;
   const drvPass = process.env.INITIAL_DRIVER_PASSWORD || adminPass;
 
