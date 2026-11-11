@@ -30,55 +30,45 @@ export const loginSchema = z.object({
 
 export const registerSchema = z.object({
   employeeNo: z
-    .string(
-      "Nomor Induk Karyawan (NIK) wajib diisi / Employee ID required"
-    )
-    .trim()
-    .min(3, "Nomor Induk Karyawan (NIK) minimal 3 karakter")
-    .max(30, "Maksimal 30 karakter")
-    .regex(
-      /^[A-Za-z0-9._-]+$/,
-      "Username / ID hanya boleh huruf, angka, titik, garis bawah, atau tanda hubung"
-    )
-    .transform((s): string => sanitizeText(s)),
-  email: z
     .string()
     .trim()
-    .email("Format email perusahaan tidak valid (Invalid corporate email)")
-    .max(120)
-    .transform((s): string => s.toLowerCase()),
+    .min(2, "Nama Panggilan / Username minimal 2 karakter")
+    .max(30, "Maksimal 30 karakter")
+    .regex(
+      /^[A-Za-z0-9._ -]+$/,
+      "Nama Panggilan / Username hanya boleh huruf, angka, spasi, titik, garis bawah, atau tanda hubung"
+    )
+    .transform((s): string => sanitizeText(s)),
   name: cleanString(
     2,
     80,
-    "Nama lengkap wajib diisi (Full name is required)"
+    "Nama asli wajib diisi dan bukan nama palsu (Real full name is required)"
   ),
   department: cleanString(
     2,
     60,
     "Departemen wajib diisi (Department is required)"
   ),
-  phone: z
-    .string("Nomor WhatsApp wajib diisi (WhatsApp number is required)")
+  email: z
+    .string()
     .trim()
-    .min(8, "Nomor WhatsApp minimal 8 digit")
-    .max(20, "Nomor WhatsApp maksimal 20 digit")
-    .regex(
-      /^\+?[0-9]{8,16}$/,
-      "Format nomor WhatsApp tidak valid, gunakan angka contoh: 08123456789"
-    )
-    .transform((s): string => sanitizeText(s)),
+    .email("Format email tidak valid")
+    .max(120)
+    .transform((s): string => s.toLowerCase())
+    .optional()
+    .or(z.literal("")),
+  phone: z
+    .string()
+    .trim()
+    .max(25)
+    .transform((s): string => sanitizeText(s))
+    .optional()
+    .or(z.literal("")),
   requestedRole: z.enum(["EMPLOYEE", "DRIVER"]).default("EMPLOYEE"),
   password: z
     .string()
-    .min(
-      8,
-      "Kata sandi minimal 8 karakter (Password must be at least 8 characters)"
-    )
-    .max(128)
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      "Kata sandi harus mengandung huruf besar, huruf kecil, dan angka (Must contain uppercase, lowercase, and number)"
-    ),
+    .min(6, "Kata sandi minimal 6 karakter (Password minimum 6 characters)")
+    .max(128),
 });
 
 export const bookingCreateSchema = z.object({

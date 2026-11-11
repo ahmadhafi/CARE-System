@@ -48,7 +48,8 @@ export async function POST(request: Request) {
     const user = db.users.find(
       (u) =>
         u.employeeNo.toLowerCase() === normalizedId ||
-        u.email.toLowerCase() === normalizedId
+        u.email.toLowerCase() === normalizedId ||
+        u.name.toLowerCase() === normalizedId
     );
 
     if (!user) {

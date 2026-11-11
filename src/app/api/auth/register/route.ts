@@ -41,28 +41,36 @@ export async function POST(request: Request) {
     const data = parsed.data;
     const db = await loadDbAsync();
 
+    const cleanUsername = data.employeeNo.trim();
     const existingEmp = db.users.find(
-      (u) => u.employeeNo.toLowerCase() === data.employeeNo.toLowerCase()
+      (u) => u.employeeNo.toLowerCase() === cleanUsername.toLowerCase()
     );
     if (existingEmp) {
       return NextResponse.json(
         {
-          error: `Nomor Induk Karyawan (${data.employeeNo}) sudah terdaftar di sistem.`,
+          error: `Nama Panggilan / Username "${cleanUsername}" sudah digunakan. Silakan gunakan nama panggilan lain.`,
         },
         { status: 409 }
       );
     }
 
-    const existingEmail = db.users.find(
-      (u) => u.email.toLowerCase() === data.email.toLowerCase()
-    );
-    if (existingEmail) {
-      return NextResponse.json(
-        {
-          error: `Email perusahaan (${data.email}) sudah terdaftar di sistem.`,
-        },
-        { status: 409 }
+    const emailToUse =
+      data.email && data.email.trim()
+        ? data.email.trim().toLowerCase()
+        : `${cleanUsername.toLowerCase().replace(/[^a-z0-9]/g, "") || "user"}-${Date.now().toString().slice(-4)}@care.internal`;
+
+    if (data.email && data.email.trim()) {
+      const existingEmail = db.users.find(
+        (u) => u.email.toLowerCase() === emailToUse
       );
+      if (existingEmail) {
+        return NextResponse.json(
+          {
+            error: `Email (${emailToUse}) sudah terdaftar di sistem.`,
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const passwordHash = await hashPassword(data.password);
@@ -70,12 +78,12 @@ export async function POST(request: Request) {
 
     const newUser: User = {
       id: `usr-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      employeeNo: data.employeeNo.toUpperCase(),
-      email: data.email.toLowerCase(),
+      employeeNo: cleanUsername,
+      email: emailToUse,
       passwordHash,
-      name: data.name,
-      department: data.department,
-      phone: data.phone,
+      name: data.name.trim(),
+      department: data.department.trim(),
+      phone: data.phone?.trim() || "",
       role: data.requestedRole,
       status: "PENDING_APPROVAL",
       approvedBy: null,

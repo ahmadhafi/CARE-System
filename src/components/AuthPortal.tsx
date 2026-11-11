@@ -83,10 +83,8 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeNo: empNo,
-          email,
           name: fullName,
           department,
-          phone,
           requestedRole,
           password: regPassword,
         }),
@@ -96,12 +94,11 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
         setErrorMsg(data.error || "Pendaftaran gagal.");
       } else {
         setSuccessMsg(
-          "Pendaftaran berhasil dikirim! Akun Anda menunggu persetujuan Workplace Solution."
+          "Pendaftaran berhasil dikirim! Akun Anda menunggu persetujuan Workplace Solution sebelum dapat digunakan."
         );
         setEmpNo("");
-        setEmail("");
         setFullName("");
-        setPhone("");
+        setDepartment("Commercial & Sales");
         setRegPassword("");
       }
     } catch {
@@ -332,7 +329,7 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
                 <div className="space-y-3.5">
                   <div>
                     <label className="block text-xs font-extrabold text-slate-700 mb-1.5">
-                      Username / ID Karyawan / Email *
+                      Nama Panggilan / Username atau ID Karyawan *
                     </label>
                     <div className="relative">
                       <BadgeCheck className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -341,7 +338,7 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
                         required
                         value={identifier}
                         onChange={(e) => setIdentifier(e.target.value)}
-                        placeholder="Contoh: WS-001 atau admin@company.co.id"
+                        placeholder="Contoh: ahmad, IT-001, atau WS-001"
                         className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 focus:border-[#1428A0] rounded-xl text-xs sm:text-sm font-bold text-slate-900 focus:outline-none focus:bg-white transition"
                       />
                     </div>
@@ -433,106 +430,94 @@ export default function AuthPortal({ onAuthenticated }: AuthPortalProps) {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="space-y-3">
+                  {/* Nama Lengkap / Nama Asli (Bukan Nama Palsu) */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Username / NIK *
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-extrabold text-slate-800">
+                        Nama Asli Lengkap *
+                      </label>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        Wajib Nama Asli (Bukan Palsu)
+                      </span>
+                    </div>
                     <input
                       type="text"
                       required
-                      value={empNo}
-                      onChange={(e) => setEmpNo(e.target.value)}
-                      placeholder="Contoh: EMP-101"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-[#1428A0]"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Masukkan nama asli lengkap sesuai identitas resmi"
+                      className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#1428A0] focus:bg-white transition"
                     />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Wajib nama asli untuk verifikasi dinas perusahaan oleh Workplace Solution.
+                    </p>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Peran Akun *
-                    </label>
-                    <select
-                      value={requestedRole}
-                      onChange={(e) =>
-                        setRequestedRole(e.target.value as "EMPLOYEE" | "DRIVER")
-                      }
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-[#1428A0]"
-                    >
-                      <option value="EMPLOYEE">Karyawan (Peminjam)</option>
-                      <option value="DRIVER">Driver Operasional</option>
-                    </select>
-                  </div>
-                </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Nama Lengkap *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Nama sesuai ID karyawan"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-[#1428A0]"
-                  />
-                </div>
+                  {/* Nama Panggilan & Peran Akun */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Nama Panggilan / Username *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={empNo}
+                        onChange={(e) => setEmpNo(e.target.value)}
+                        placeholder="Contoh: ahmad, hafi, rina"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#1428A0] focus:bg-white transition"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Digunakan saat login ke sistem.
+                      </p>
+                    </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Email Kantor *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="nama@company.co.id"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-[#1428A0]"
-                    />
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Peran Akun *
+                      </label>
+                      <select
+                        value={requestedRole}
+                        onChange={(e) =>
+                          setRequestedRole(e.target.value as "EMPLOYEE" | "DRIVER")
+                        }
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#1428A0]"
+                      >
+                        <option value="EMPLOYEE">Karyawan (Peminjam Mobil)</option>
+                        <option value="DRIVER">Driver Operasional</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      No. WhatsApp *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="08123456789"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-[#1428A0]"
-                    />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Departemen / Divisi *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      placeholder="Contoh: Commercial & Sales"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-[#1428A0]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Password Baru *
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="Minimal 6 karakter"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-[#1428A0]"
-                    />
+                  {/* Departemen & Kata Sandi */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Departemen / Divisi *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        placeholder="Contoh: IT, Marketing, Finance"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#1428A0] focus:bg-white transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Kata Sandi (Password) *
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="Minimal 6 karakter"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:border-[#1428A0] focus:bg-white transition"
+                      />
+                    </div>
                   </div>
                 </div>
 
